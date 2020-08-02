@@ -180,7 +180,7 @@ OSAL_IRQ_HANDLER(STM32_ADC2_HANDLER)
   OSAL_IRQ_EPILOGUE();
 }
 
-#if 1
+#if 0
 uint16_t adc_multi_read(uint32_t chsel, uint16_t *result, uint32_t count)
 {
   /* ADC setup */

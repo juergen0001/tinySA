@@ -87,7 +87,9 @@ static bool si5351_wait_ready(void)
     return false;
 }
 
-#if 0
+bool pll_lock_failed;
+
+#if 1
 static void si5351_wait_pll_lock(void)
 {
     systime_t start = chVTGetSystemTime();

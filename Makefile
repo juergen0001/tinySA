@@ -85,8 +85,8 @@ endif
 
 ifeq ($(TARGET),F303)
   USE_FPU = hard
-  USE_PROCESS_STACKSIZE = 0x300
-  USE_EXCEPTIONS_STACKSIZE = 0x200
+  USE_PROCESS_STACKSIZE = 0x400
+  USE_EXCEPTIONS_STACKSIZE = 0x300
 endif
 
 #
@@ -151,7 +151,7 @@ CSRC = $(STARTUPSRC) \
        FatFs/ff.c \
        FatFs/ffunicode.c \
        usbcfg.c \
-       main.c plot.c ui.c ili9341.c tlv320aic3204.c si5351.c numfont20x22.c Font5x7.c Font10x14.c flash.c adc.c  si4432.c  Font7x13b.c rtc.c
+       main.c plot.c ui.c ili9341.c tlv320aic3204.c rda5815.c si5351.c dsp.c numfont20x22.c Font5x7.c Font10x14.c flash.c adc.c  si4432.c  Font7x13b.c rtc.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.

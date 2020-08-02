@@ -699,6 +699,18 @@ duplicate_buffer_to_dump(int16_t *p)
 }
 #endif
 
+int16_t dummy_capture[AUDIO_BUFFER_LEN*2];
+void fill_dummy(void) {
+  for (int i=0;i<AUDIO_BUFFER_LEN;i++) {
+    dummy_capture[i*2+0] = (int)(sin(((float) i)/2.0)*10000);
+    dummy_capture[i*2+1] = (int)(cos(((float) i)/2.0)*10000);
+    dummy_capture[i*2+0] += (int)(sin(((float) i)*1.0)*1000);
+    dummy_capture[i*2+1] += (int)(cos(((float) i)*1.0)*1000);
+    dummy_capture[i*2+0] += (int)(sin(((float) i)*2.0)*100);
+    dummy_capture[i*2+1] += (int)(cos(((float) i)*2.0)*100);
+  }
+}
+
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
 #if PORT_SUPPORTS_RT
@@ -712,10 +724,12 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   if (wait_count > 1) {
     --wait_count;
   } else if (wait_count > 0) {
-    if (accumerate_count > 0) {
- //     dsp_process(p, n);
-      accumerate_count--;
-    }
+//    if (accumerate_count > 0) {
+    dsp_process(p, n);
+//    dsp_process(dummy_capture, n);
+    wait_count--;
+//      accumerate_count--;
+//    }
 #ifdef ENABLED_DUMP
     duplicate_buffer_to_dump(p);
 #endif
@@ -733,7 +747,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 static const I2SConfig i2sconfig = {
   NULL, // TX Buffer
   rx_buffer, // RX Buffer
-  AUDIO_BUFFER_LEN * 2,
+  AUDIO_BUFFER_LEN*2,
   NULL, // tx callback
   i2s_end_callback, // rx callback
   0, // i2scfgr
@@ -2737,10 +2751,17 @@ goto again;
  * I2S Initialize
  */
   tlv320aic3204_init();
+  tlv320aic3204_set_gain(1, 1);
   i2sInit();
   i2sObjectInit(&I2SD2);
   i2sStart(&I2SD2, &i2sconfig);
   i2sStartExchange(&I2SD2);
+  tlv320aic3204_select(0);      // Reflection port
+  RDA5815_init();
+  RDA5815_set_freq(950035,4000);   // Set to mobile phone base freq
+  fill_dummy();
+  dsp_init();
+  wait_count = 1;
 #endif
   area_height = AREA_HEIGHT_NORMAL;
   ui_init();
@@ -2764,6 +2785,8 @@ goto again;
   set_refer_output(-1);
 //  ui_mode_menu();       // Show menu when autostarting mode
   ui_mode_normal();
+
+  set_sweep_points(256);        // -------- FFT test --------
 
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO-1, Thread1, NULL);
 

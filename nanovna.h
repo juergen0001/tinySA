@@ -167,6 +167,7 @@ enum {
 extern uint8_t sweep_mode;
 extern bool completed;
 extern const char *info_about[];
+extern bool pll_lock_failed;
 
 // ------------------------------- sa_core.c ----------------------------------
 void reset_settings(int);
@@ -238,10 +239,10 @@ void sweep_remote(void);
 /*
  * dsp.c
  */
-// 5ms @ 48kHz
-#define AUDIO_BUFFER_LEN 96
+// 256 stereo samples per DSP
+#define AUDIO_BUFFER_LEN 512
 
-extern int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
+extern int16_t rx_buffer[AUDIO_BUFFER_LEN * 2]; //
 
 #define STATE_LEN 32
 #define SAMPLE_LEN 48
@@ -251,8 +252,17 @@ extern int16_t ref_buf[];
 extern int16_t samp_buf[];
 #endif
 #endif
-#ifdef __VNA__
 void dsp_process(int16_t *src, size_t len);
+void dsp_init(void);
+void FFT(float data[], int m, bool forward);
+#if 1
+extern float data[AUDIO_BUFFER_LEN];
+#else
+extern int16_t rfft[512];
+extern int16_t ifft[512];
+#endif
+extern volatile uint8_t wait_count;
+#ifdef __VNA__
 void reset_dsp_accumerator(void);
 void calculate_gamma(float *gamma);
 void fetch_amplitude(float *gamma);
@@ -265,8 +275,8 @@ void fetch_amplitude_ref(float *gamma);
  */
 
 extern void tlv320aic3204_init(void);
-extern void tlv320aic3204_set_gain(int lgain, int rgain);
-extern void tlv320aic3204_select(int channel);
+extern void tlv320aic3204_set_gain(uint8_t lgain, uint8_t rgain);
+extern void tlv320aic3204_select(uint8_t channel);
 
 #endif
 /*
@@ -965,4 +975,10 @@ enum {
 enum {
   T_AUTO, T_NORMAL, T_SINGLE, T_DONE, T_UP, T_DOWN
 };
+
+// RDA5815
+
+uint8_t RDA5815_set_freq(uint32_t fPLL, uint32_t fSym );
+void RDA5815_init(void);
+
 /*EOF*/
