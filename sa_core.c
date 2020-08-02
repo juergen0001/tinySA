@@ -1784,21 +1784,20 @@ sweep_again:                                // stay in sweep loop when output mo
 
 //    RSSI = PURE_TO_float(perform(break_on_operation, i, frequencies[i], setting.tracking));    // Measure RSSI for one of the frequencies
 // ----------------- FFT test --------------------------
-    if (i<256) {             // Concert to
-#if 1                                   // Linear
-#if 1
+    if (i<AUDIO_BUFFER_LEN/2) {             // Convert to
+#if 1                                   //
+#if 1                           // float FFT
       int fi;
       if (i < AUDIO_BUFFER_LEN/4)
         fi = i + AUDIO_BUFFER_LEN/4;
       else
-        fi = i - AUDIO_BUFFER_LEN/4;
+        fi = i - AUDIO_BUFFER_LEN/4 + 1;
       fi = AUDIO_BUFFER_LEN/2 - fi;     // Invert frequencies due to I/Q phase error
-      RSSI = 10*log10(data[2*fi]*data[2*fi] + data[2*fi+1]*data[2*fi+1]) - 120;
-//      RSSI = sqrt(data[2*i]*data[2*i] + data[2*i+1]*data[2*i+1])/44.0 - 120;
-#else
+      RSSI = 10*log10(data[2*fi]*data[2*fi] + data[2*fi+1]*data[2*fi+1]) - 120;         // dBm
+//      RSSI = sqrt(data[2*i]*data[2*i] + data[2*i+1]*data[2*i+1])/44.0 - 120;          // Linear
+#else                           // integer FFT
           RSSI = sqrt(rfft[i]*rfft[i] + ifft[i]*ifft[i])/440.0+40;
 #endif
-      //    stored_t[i] = (rfft[i]<<scale)/44.0+80;
 #else
       float r = rfft[i];                  // Log
       if (r < 0)

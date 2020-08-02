@@ -23,6 +23,7 @@
 
 #define SI5351_I2C_ADDR   	(0x60<<1)
 
+
 static bool si5351_bulk_read(uint8_t reg, uint8_t* buf, int len)
 {
     int addr = SI5351_I2C_ADDR>>1;

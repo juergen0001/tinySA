@@ -222,7 +222,7 @@ uint8_t RDA5815_set_freq(uint32_t fPLL, uint32_t fSym )
 	  return;
 	old_fPLL = fPLL;
 
-	fPLL -= 35;             // Subtract 35kHz for XCO error
+	fPLL -= 30;             // Subtract 30kHz for XCO error
 	
     uint32_t MHz = (fPLL / 1000);
 	uint32_t kHz = fPLL - MHz*1000;
@@ -231,7 +231,7 @@ uint8_t RDA5815_set_freq(uint32_t fPLL, uint32_t fSym )
   //RDA5815_write(0x2b,0x95);//clk_interface_27m=0  add by rda 2012.1.12     
 	//set frequency start
 //	temp_value = (uint32_t)fPLL * /* 77672; // */ 69905;//((2<<21) / RDA5815_XTALFREQ);
-    temp_value = MHz * 69905 + kHz * 67;
+    temp_value = MHz * 69905 + kHz * 70;
 
 	buffer = ((uint8_t)((temp_value>>24)&0xff));
 	RDA5815_write(0x07,buffer);
