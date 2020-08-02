@@ -40,7 +40,7 @@ static const uint8_t conf_data_pll[] = {
   0 // sentinel
 };
 
-// default fs=48kHz
+// old default fs=48kHz
 static const uint8_t conf_data_clk[] = {
   2, 0x0b, 0x82, /* Power up the NDAC divider with value 2 */
   2, 0x0c, 0x87, /* Power up the MDAC divider with value 7 */
@@ -48,7 +48,7 @@ static const uint8_t conf_data_clk[] = {
   2, 0x0e, 0x80,
   2, 0x3c, 0x08, /* Set the DAC Mode to PRB_P8 */
   //2, 0x3c, 25, /* Set the DAC Mode to PRB_P25 */
-  2, 0x1b, 0x0c, /* Set the BCLK,WCLK as output */    
+  2, 0x1b, 0x0c, /* Set the BCLK,WCLK as output */
   2, 0x1e, 0x80 + 28, /* Enable the BCLKN divider with value 28 */
   2, 0x25, 0xee, /* DAC power up */
 
@@ -56,6 +56,75 @@ static const uint8_t conf_data_clk[] = {
   2, 0x13, 0x87, /* Power up the MADC divider with value 7 */
   2, 0x14, 0x80, /* Program the OSR of ADC to 128 */
   2, 0x3d, 0x01, /* Select ADC PRB_R1 */
+  0 // sentinel
+};
+
+// default fs=48kHz
+static const uint8_t conf_48k_data_clk[] = {
+  // Clock config, default fs=48kHz
+  // from PLL 86.016MHz/(2*7*128) = 48kHz
+  2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
+  2, 0x0c, 0x87,     // Power up the MDAC divider with value 7
+  2, 0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 128
+  2, 0x0e, 0x80,     // DAC OSR Setting Register 2 (LSB)
+  2, 0x3c, 0x01,     // Set the DAC Mode to PRB_P1
+  2, 0x25, 0x00,     // DAC power down
+// ADC output sample rate depend from DAC, but internal use this settings
+  2, 0x12, 0x81,     // Power up the NADC divider with value 1
+  2, 0x13, 0x87,     // Power up the MADC divider with value 7
+  2, 0x14, 0x80,     // ADC Oversampling (AOSR) Program the OSR of ADC to 128
+  2, 0x3d, 0x01,     // Select ADC PRB_R1
+  2, 0x24, 0xee,     // ADC power up
+
+  2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
+  2, 0x1e, 0x80 + 28,// Enable the BCLKN divider with value 28 (I2S clock = 86.016MHz/(NDAC*28) = 48kHz * (16+16)
+
+  0 // sentinel
+};
+
+// default fs=96kHz
+static const uint8_t conf_96k_data_clk[] = {
+  // Clock config, default fs=96kHz
+  // from PLL 86.016MHz/(2*7*64) = 96kHz
+  2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
+  2, 0x0c, 0x87,     // Power up the MDAC divider with value 7
+  2, 0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 64
+  2, 0x0e, 0x40,     // DAC OSR Setting Register 2 (LSB)
+  2, 0x3c, 0x01,     // Set the DAC Mode to PRB_P1
+  2, 0x25, 0x00,     // DAC power down
+// ADC output sample rate depend from DAC, but internal use this settings
+  2, 0x12, 0x81,     // Power up the NADC divider with value 1
+  2, 0x13, 0x87,     // Power up the MADC divider with value 7
+  2, 0x14, 0x80,     // ADC Oversampling (AOSR) set OSR of ADC to 128
+  2, 0x3d, 0x01,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
+  2, 0x24, 0xee,     // ADC power up
+
+  2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
+  2, 0x1e, 0x80 + 14,// Enable the BCLKN divider with value 14 (I2S clock = 86.016MHz/(NDAC*14) = 96kHz * (16+16)
+  0 // sentinel
+};
+
+// default fs=192kHz
+static const uint8_t conf_192k_data_clk[] = {
+  // Clock config, default fs=192kHz
+  // from PLL 86.016MHz/(2*7*32) = 192kHz
+  // DAC setting, need only for set ADC sample rate output
+  2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
+  2, 0x0c, 0x87,     // Power up the MDAC divider with value 7
+  2, 0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 32
+  2, 0x0e, 0x20,     // DAC OSR Setting Register 2 (LSB)
+  2, 0x3c, 0x01,     // Set the DAC Mode to PRB_P1
+  2, 0x25, 0x00,     // DAC power down
+  // ADC output sample rate depend from DAC, but internal use this settings
+  2, 0x12, 0x81,     // Power up the NADC divider with value 1
+  2, 0x13, 0x87,     // Power up the MADC divider with value 6
+  2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 64
+  2, 0x3d, 0x01,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
+  2, 0x24, 0xee,     // ADC power up
+
+  2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
+  2, 0x1e, 0x80 + 7,// Enable the BCLKN divider with value 14 (I2S clock = 86.016MHz/(NDAC*14) = 96kHz * (16+16)
+
   0 // sentinel
 };
 
@@ -119,7 +188,11 @@ static void tlv320aic3204_config(const uint8_t *data)
 void tlv320aic3204_init(void)
 {
   tlv320aic3204_config(conf_data_pll);
-  tlv320aic3204_config(conf_data_clk);
+//  tlv320aic3204_config(conf_data_clk);      // old 48k settings!!
+//  tlv320aic3204_config(conf_48k_data_clk);  // new 48k
+//  tlv320aic3204_config(conf_96k_data_clk);  //  96k
+  tlv320aic3204_config(conf_192k_data_clk);   // 192k
+
   tlv320aic3204_config(conf_data_routing);
   wait_ms(40);
   tlv320aic3204_config(conf_data_unmute);
@@ -140,6 +213,17 @@ void tlv320aic3204_select(uint8_t channel)
         0 // sentinel
     };
     tlv320aic3204_config(channel ? ch1 : ch3);
+}
+
+void
+tlv320aic3204_write_reg(uint8_t page, uint8_t reg, uint8_t data)
+{
+  uint8_t buf[] = {
+   2, 0x00,  page, // Select Page
+   2, reg,   data, // write reg data
+   0
+  };
+  tlv320aic3204_config(buf);
 }
 
 void tlv320aic3204_set_gain(uint8_t lgain, uint8_t rgain)

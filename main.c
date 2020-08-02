@@ -80,6 +80,9 @@ static volatile vna_shellcmd_t  shell_function = 0;
 #define ENABLE_INFO_COMMAND
 // Enable color command, allow change config color for traces, grid, menu
 #define ENABLE_COLOR_COMMAND
+// Enable I2C command for send data to AIC3204, used for debug
+#define ENABLE_I2C_COMMAND
+
 #ifdef __VNA__
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -2269,6 +2272,19 @@ VNA_SHELL_FUNCTION(cmd_threads)
 }
 #endif
 
+#ifdef ENABLE_I2C_COMMAND
+VNA_SHELL_FUNCTION(cmd_i2c){
+  if (argc != 3) {
+    shell_printf("usage: i2c page reg data\r\n");
+    return;
+  }
+  uint8_t page = my_atoui(argv[0]);
+  uint8_t reg  = my_atoui(argv[1]);
+  uint8_t data = my_atoui(argv[2]);
+  tlv320aic3204_write_reg(page, reg, data);
+}
+#endif
+
 #include "sa_cmd.c"
 
 //=============================================================================
@@ -2364,6 +2380,9 @@ static const VNAShellCommand commands[] =
  #ifdef ENABLE_THREADS_COMMAND
      {"threads"     , cmd_threads     , 0},
  #endif
+#ifdef ENABLE_I2C_COMMAND
+    {"i2c"         , cmd_i2c         , CMD_WAIT_MUTEX},
+#endif
      { "y", cmd_y,    CMD_WAIT_MUTEX },
      { "z", cmd_z,    CMD_WAIT_MUTEX },
    { "i", cmd_i,	0 },

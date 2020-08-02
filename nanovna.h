@@ -277,6 +277,7 @@ void fetch_amplitude_ref(float *gamma);
 extern void tlv320aic3204_init(void);
 extern void tlv320aic3204_set_gain(uint8_t lgain, uint8_t rgain);
 extern void tlv320aic3204_select(uint8_t channel);
+extern void tlv320aic3204_write_reg(uint8_t page, uint8_t reg, uint8_t data);
 
 #endif
 /*
