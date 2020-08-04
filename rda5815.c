@@ -219,7 +219,7 @@ uint8_t RDA5815_set_freq(uint32_t fPLL, uint32_t fSym )
 
 	static uint32_t old_fPLL = 0;
 	if (old_fPLL == fPLL)
-	  return;
+	  return 1;
 	old_fPLL = fPLL;
 
 	fPLL -= 30;             // Subtract 30kHz for XCO error

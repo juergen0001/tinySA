@@ -242,7 +242,7 @@ void sweep_remote(void);
 // 256 stereo samples per DSP
 #define AUDIO_BUFFER_LEN 512
 
-extern int16_t rx_buffer[AUDIO_BUFFER_LEN * 2]; //
+extern int16_t rx_buffer[AUDIO_BUFFER_LEN*2]; //
 
 #define STATE_LEN 32
 #define SAMPLE_LEN 48
@@ -914,7 +914,7 @@ uint16_t adc_single_read(uint32_t chsel);
 void adc_start_analog_watchdogd(void);
 void adc_stop(void);
 int16_t adc_vbat_read(void);
-
+void adc_multi_read(uint16_t *buf, size_t samples);
 /*
  * misclinous
  */

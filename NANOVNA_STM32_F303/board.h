@@ -125,17 +125,17 @@
  * PA13 - SWDIO                     (alternate 0).
  * PA14 - SWCLK                     (alternate 0).
  */
-#define VAL_GPIOA_MODER             (PIN_MODE_INPUT(0U) |           \
-                                     PIN_MODE_INPUT(1U) |           \
-                                     PIN_MODE_INPUT(2U) |  			\
-                                     PIN_MODE_INPUT(3U) |   		\
+#define VAL_GPIOA_MODER             (PIN_MODE_ANALOG(0U) |           \
+                                     PIN_MODE_ANALOG(1U) |           \
+                                     PIN_MODE_ANALOG(2U) |  			\
+                                     PIN_MODE_ANALOG(3U) |   		\
                                      PIN_MODE_INPUT(4U) |           \
                                      PIN_MODE_ANALOG(GPIOA_DAC2) |  \
                                      PIN_MODE_ANALOG(GPIOA_XP) |    \
                                      PIN_MODE_ANALOG(GPIOA_YP) |    \
-                                     PIN_MODE_ALTERNATE(8U) | \
-                                     PIN_MODE_OUTPUT(GPIOA_PE_SEL) |           \
-                                     PIN_MODE_OUTPUT(GPIOA_RF_PWR) | \
+                                     PIN_MODE_ANALOG(8U) | \
+                                     PIN_MODE_ANALOG(GPIOA_PE_SEL) |           \
+                                     PIN_MODE_ANALOG(GPIOA_RF_PWR) | \
                                      PIN_MODE_ALTERNATE(GPIOA_USB_DM) |  \
                                      PIN_MODE_ALTERNATE(GPIOA_USB_DP) |  \
                                      PIN_MODE_ALTERNATE(GPIOA_JTMS) |    \
@@ -165,15 +165,15 @@
                                      PIN_OSPEED_2M(5) |           \
                                      PIN_OSPEED_2M(6) |          \
                                      PIN_OSPEED_2M(7) |          \
-                                     PIN_OSPEED_100M(8U) | \
-                                     PIN_OSPEED_100M(GPIOA_PE_SEL) |          \
-                                     PIN_OSPEED_100M(GPIOA_RF_PWR) |         \
+                                     PIN_OSPEED_2M(8U) | \
+                                     PIN_OSPEED_2M(GPIOA_PE_SEL) |          \
+                                     PIN_OSPEED_2M(GPIOA_RF_PWR) |         \
                                      PIN_OSPEED_100M(GPIOA_USB_DM) |     \
                                      PIN_OSPEED_100M(GPIOA_USB_DP) |     \
                                      PIN_OSPEED_100M(GPIOA_JTMS) |         \
                                      PIN_OSPEED_100M(GPIOA_JTCK) |         \
                                      PIN_OSPEED_100M(GPIOA_LCD_RESET))
-#define VAL_GPIOA_PUPDR           (PIN_PUPDR_PULLDOWN(0) | \
+#define VAL_GPIOA_PUPDR           (PIN_PUPDR_FLOATING(0) | \
                                      PIN_PUPDR_PULLDOWN(1) | \
                                      PIN_PUPDR_PULLDOWN(2) | \
                                      PIN_PUPDR_PULLDOWN(3) | \
@@ -181,9 +181,9 @@
                                      PIN_PUPDR_FLOATING(5) |         \
                                      PIN_PUPDR_FLOATING(6) |         \
                                      PIN_PUPDR_FLOATING(7) |         \
-                                     PIN_PUPDR_PULLUP(8U) | \
-                                     PIN_PUPDR_PULLUP(GPIOA_PE_SEL) |         \
-                                     PIN_PUPDR_PULLUP(GPIOA_RF_PWR) | \
+                                     PIN_PUPDR_FLOATING(8U) | \
+                                     PIN_PUPDR_FLOATING(GPIOA_PE_SEL) |         \
+                                     PIN_PUPDR_FLOATING(GPIOA_RF_PWR) | \
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DM) | \
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DP) | \
                                      PIN_PUPDR_PULLDOWN(GPIOA_JTMS) |   \

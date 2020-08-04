@@ -2773,12 +2773,12 @@ goto again;
   tlv320aic3204_set_gain(1, 1);
   i2sInit();
   i2sObjectInit(&I2SD2);
-  i2sStart(&I2SD2, &i2sconfig);
-  i2sStartExchange(&I2SD2);
+//  i2sStart(&I2SD2, &i2sconfig);
+//  i2sStartExchange(&I2SD2);
   tlv320aic3204_select(0);      // Reflection port
   RDA5815_init();
-  RDA5815_set_freq(950035,4000);   // Set to mobile phone base freq
-  fill_dummy();
+  RDA5815_set_freq(950000,4000);   // Set to mobile phone base freq
+//  fill_dummy();
   dsp_init();
   wait_count = 1;
 #endif

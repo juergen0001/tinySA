@@ -53,13 +53,13 @@ static uint32_t new_port_moder;
 
 #define CS_SI0_HIGH     palSetPad(GPIOB, GPIOB_RX_SEL)
 #define CS_SI1_HIGH     palSetPad(GPIOB, GPIOB_LO_SEL)
-#define CS_PE_HIGH      palSetPad(GPIOA, GPIOA_PE_SEL)
+// #define CS_PE_HIGH      palSetPad(GPIOA, GPIOA_PE_SEL)
 
 #define RF_POWER_HIGH   palSetPad(GPIOB, GPIOB_RF_PWR)
 
 #define CS_SI0_LOW      palClearPad(GPIOB, GPIOB_RX_SEL)
 #define CS_SI1_LOW      palClearPad(GPIOB, GPIOB_LO_SEL)
-#define CS_PE_LOW       palClearPad(GPIOA, GPIOA_PE_SEL)
+// #define CS_PE_LOW       palClearPad(GPIOA, GPIOA_PE_SEL)
 
 #define SPI1_CLK_HIGH   palSetPad(GPIOB, GPIOB_SPI_SCLK)
 #define SPI1_CLK_LOW    palClearPad(GPIOB, GPIOB_SPI_SCLK)
@@ -680,7 +680,9 @@ void SI4432_Init()
 
   CS_SI0_LOW;                       // Drop CS so power can be removed
   CS_SI1_LOW;                       // Drop CS so power can be removed
+#ifdef CS_PE_LOW
   CS_PE_LOW;                        // low is the default safe state
+#endif
   SPI1_CLK_LOW;                     // low is the default safe state
   SPI1_SDI_LOW;                     // will be set with any data out
 
@@ -737,7 +739,9 @@ void SI4432_SetReference(int freq)
 #define PE4302_en 10
 
 void PE4302_init(void) {
+#ifdef CS_PE_LOW
   CS_PE_LOW;
+#endif
 }
 
 #define PE4302_DELAY 100
@@ -773,9 +777,13 @@ bool PE4302_Write_Byte(unsigned char DATA )
 
   shiftOut(DATA);
 //  chThdSleepMicroseconds(PE4302_DELAY);
+#ifdef CS_PE_HIGH
   CS_PE_HIGH;
+#endif
 //  chThdSleepMicroseconds(PE4302_DELAY);
+#ifdef CS_PE_LOW
   CS_PE_LOW;
+#endif
 //  chThdSleepMicroseconds(PE4302_DELAY);
   return true;
 }

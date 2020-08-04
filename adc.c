@@ -35,15 +35,29 @@
 static adcsample_t samplesVBAT[ADC_GRP_NUM_CHANNELS_VBAT];
 static adcsample_t samples[1];
 
+#define ADCD_2 ADCD2
+
 static const ADCConversionGroup adcgrpcfgVBAT = {
   FALSE,
   ADC_GRP_NUM_CHANNELS_VBAT,
   NULL,
   NULL,
-  ADC_CFGR_CONT | ADC_CFGR1_RES_12BIT,       // CFGR1
+  ADC_CFGR1_RES_12BIT,       // CFGR1
   ADC_TR(0, 0),                              // ADC watchdog threshold TR1
+#if STM32_ADC_DUAL_MODE
+  ADC_CCR_DUAL_FIELD(0),    // Only used in DUAL mode
+#endif
   {0, ADC_SMPR2_SMP_AN16(ADC_VBAT_SMP_TIME) | ADC_SMPR2_SMP_AN17(ADC_VBAT_SMP_TIME)/*| ADC_SMPR2_SMP_AN18(ADC_VBAT_SMP_TIME)*/}, // SMPR
   {ADC_SQR1_SQ1_N(ADC_CHANNEL_IN17) | ADC_SQR1_SQ2_N(ADC_CHANNEL_IN18)/*| ADC_SQR1_SQ3_N(ADC_CHANNEL_IN16)*/, 0, 0, 0}           // CHSELR
+#if STM32_ADC_DUAL_MODE
+ ,{0,0},
+ {                                                             /* SQR[4]   */
+   0,
+   0,
+   0,
+   0
+ }
+#endif
 };
 
 static const ADCConversionGroup adcgrpcfgTouch = {
@@ -56,8 +70,20 @@ static const ADCConversionGroup adcgrpcfgTouch = {
   | ADC_CFGR_EXTSEL_2  // EXT4 0x1000 event (TIM3_TRGO)
   | ADC_CFGR_AWD1EN,   // Enable Analog watchdog check interrupt
   ADC_TR(0, TOUCH_THRESHOLD),                 // Analog watchdog threshold TR1, interrupt on touch press
+#if STM32_ADC_DUAL_MODE
+  ADC_CCR_DUAL_FIELD(0),    // Only used in DUAL mode
+#endif
   {ADC_SMPR1_SMP_AN4(ADC_TOUCH_SMP_TIME), 0}, // SMPR[2]
   {ADC_SQR1_SQ1_N(ADC_CHANNEL_IN4), 0, 0, 0}  // SQR[4]
+#if STM32_ADC_DUAL_MODE
+ ,{0,0},
+ {                                                             /* SQR[4]   */
+   0,
+   0,
+   0,
+   0
+ }
+#endif
 };
 
 static ADCConversionGroup adcgrpcfgXY = {
@@ -65,15 +91,27 @@ static ADCConversionGroup adcgrpcfgXY = {
   1,
   NULL,                         /* adccallback_touch */
   NULL,                         /* adcerrorcallback_touch */
-  ADC_CFGR1_RES_12BIT,          /* CFGR */
+  ADC_CFGR_CONT | ADC_CFGR1_RES_12BIT,          /* CFGR */
   ADC_TR(0, 0),                 /* TR1     */
+#if STM32_ADC_DUAL_MODE
+  ADC_CCR_DUAL_FIELD(0),    // Only used in DUAL mode
+#endif
   {ADC_SMPR1_SMP_AN3(ADC_TOUCH_XY_SMP_TIME) | ADC_SMPR1_SMP_AN4(ADC_TOUCH_XY_SMP_TIME), 0}, /* SMPR[2] */
   {ADC_SQR1_SQ1_N(ADC_CHANNEL_IN3), 0, 0, 0} /* SQR[4]  */
+#if STM32_ADC_DUAL_MODE
+ ,{0,0},
+ {                                                             /* SQR[4]   */
+   0,
+   0,
+   0,
+   0
+ }
+#endif
 };
 
 void adc_init(void)
 {
-  adcStart(&ADCD2, NULL);
+  adcStart(&ADCD_2, NULL);
   adcStart(&ADCD1, NULL);
   #ifdef F303_ADC_VREF_ALWAYS_ON
   adcSTM32EnableVBAT(&ADCD1);
@@ -85,9 +123,9 @@ void adc_init(void)
 uint16_t adc_single_read(uint32_t chsel)
 {
   /* ADC setup */
-//  adcStart(&ADCD2, NULL);
+//  adcStart(&ADCD_2, NULL);
   adcgrpcfgXY.sqr[0] = ADC_SQR1_SQ1_N(chsel);
-  adcConvert(&ADCD2, &adcgrpcfgXY, samples, 1);
+  adcConvert(&ADCD_2, &adcgrpcfgXY, samples, 1);
   return(samples[0]);
 }
 
@@ -139,14 +177,14 @@ int16_t adc_vbat_read(void)
 
 void adc_start_analog_watchdogd(void)
 {
-//  adcStart(&ADCD2, NULL);
-  adcStartConversion(&ADCD2, &adcgrpcfgTouch, samples, 1);
+//  adcStart(&ADCD_2, NULL);
+  adcStartConversion(&ADCD_2, &adcgrpcfgTouch, samples, 1);
 }
 
 void adc_stop(void)
 {
  #if 1
-  adcStopConversion(&ADCD2);
+  adcStopConversion(&ADCD_2);
  #else
   if (ADC2->CR & ADC_CR_ADEN) {
     if (ADC2->CR & ADC_CR_ADSTART) {
@@ -179,6 +217,43 @@ OSAL_IRQ_HANDLER(STM32_ADC2_HANDLER)
 
   OSAL_IRQ_EPILOGUE();
 }
+
+static const ADCConversionGroup adcgrpcfgIQ =
+{
+ FALSE,
+ 2,
+ NULL,
+ NULL,
+ ADC_CFGR_CONT | ADC_CFGR1_RES_12BIT,       // CFGR1
+ ADC_TR(0, 0),                              // ADC watchdog threshold TR1
+#if STM32_ADC_DUAL_MODE
+ ADC_CCR_DUAL_FIELD(0),    // Only used in DUAL mode
+#endif
+ {ADC_SMPR1_SMP_AN2(ADC_SMPR_SMP_1P5)|ADC_SMPR1_SMP_AN3(ADC_SMPR_SMP_1P5), 0/*| ADC_SMPR2_SMP_AN18(ADC_VBAT_SMP_TIME)*/}, // SMPR
+ {ADC_SQR1_NUM_CH(2)| ADC_SQR1_SQ1_N(ADC_CHANNEL_IN2) | ADC_SQR1_SQ2_N(ADC_CHANNEL_IN4)/*| ADC_SQR1_SQ3_N(ADC_CHANNEL_IN16)*/, 0, 0, 0}           // CHSELR
+#if STM32_ADC_DUAL_MODE
+,{0,0},
+{                                                             /* SQR[4]   */
+  0,
+  0,
+  0,
+  0
+}
+#endif      // CHSELR
+};
+
+void adc_multi_read(uint16_t *buf, size_t samples)
+{
+#if 0
+  adc_stop();
+  for (uint16_t i = 0; i < samples; i++)
+    buf[i] = adc_single_read(ADC_CHANNEL_IN3);
+  adc_start_analog_watchdogd();
+#else
+  adcConvert(&ADCD1, &adcgrpcfgIQ, buf, samples/2);
+#endif
+}
+
 
 #if 0
 uint16_t adc_multi_read(uint32_t chsel, uint16_t *result, uint32_t count)

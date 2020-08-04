@@ -148,7 +148,7 @@ void reset_settings(int m)
     maxFreq = 2000000000;
 #else
     minFreq = 24*setting_frequency_10mhz;
-    maxFreq = 96*setting_frequency_10mhz;
+    maxFreq = 210*setting_frequency_10mhz;       // --------- FFT test -------------
 #endif
     set_sweep_frequency(ST_START, minFreq);
     set_sweep_frequency(ST_STOP,  maxFreq);
@@ -1774,8 +1774,14 @@ sweep_again:                                // stay in sweep loop when output mo
     scandirty = true;                                                       // This is the first pass with new settings
     dirty = false;
   }
-
+#if 1               // STM ADC
+  START_PROFILE
+  adc_multi_read((uint16_t *)rx_buffer, AUDIO_BUFFER_LEN);
+  dsp_process(rx_buffer, AUDIO_BUFFER_LEN);
+  STOP_PROFILE
+#else               // tlv ADC
   while (wait_count) __WFI();
+#endif
 //----------------- end FFT test
 
   // ------------------------- start sweep loop -----------------------------------
@@ -1792,7 +1798,7 @@ sweep_again:                                // stay in sweep loop when output mo
         fi = i + AUDIO_BUFFER_LEN/4;
       else
         fi = i - AUDIO_BUFFER_LEN/4 + 1;
-      fi = AUDIO_BUFFER_LEN/2 - fi;     // Invert frequencies due to I/Q phase error
+//      fi = AUDIO_BUFFER_LEN/2 - fi;     // Invert frequencies due to I/Q phase error
       RSSI = 10*log10(data[2*fi]*data[2*fi] + data[2*fi+1]*data[2*fi+1]) - 120;         // dBm
 //      RSSI = sqrt(data[2*i]*data[2*i] + data[2*i+1]*data[2*i+1])/44.0 - 120;          // Linear
 #else                           // integer FFT
