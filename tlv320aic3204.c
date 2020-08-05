@@ -167,7 +167,7 @@ static const uint8_t conf_768k_data_clk[] = {
 // ADC output sample rate depend from DAC, but internal use this settings
   2, 0x12, 0x82,     // Power up the NADC divider with value 2
   2, 0x13, 0x84,     // Power up the MADC divider with value 4
-  2, 0x14, 0x80,     // ADC Oversampling (AOSR) set OSR of ADC to 128
+  2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 64
   2, 0x3d, 0x01,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
 //  2, 0x3d, 0x07,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
   2, 0x24, 0xee,     // ADC power up
