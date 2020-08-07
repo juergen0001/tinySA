@@ -1857,7 +1857,7 @@ sweep_again:                                // stay in sweep loop when output mo
   }
 #ifdef __TLV__                               // tlv ADC
   while (wait_count) __WFI();
-  calculate_correlation();
+// calculate_correlation();
 #else                                        // STM ADC
   START_PROFILE
   adc_multi_read((uint16_t *)rx_buffer, AUDIO_BUFFER_LEN);
@@ -1873,8 +1873,7 @@ sweep_again:                                // stay in sweep loop when output mo
 //    RSSI = PURE_TO_float(perform(break_on_operation, i, frequencies[i], setting.tracking));    // Measure RSSI for one of the frequencies
 // ----------------- FFT test --------------------------
     if (i<AUDIO_BUFFER_LEN/2) {             // Convert to
-#if 1                                   //
-#if 1                           // float FFT
+
       int fi = i;
       if (fi < AUDIO_BUFFER_LEN/4)
         fi = fi + AUDIO_BUFFER_LEN/4;
@@ -1882,30 +1881,16 @@ sweep_again:                                // stay in sweep loop when output mo
         fi = fi - AUDIO_BUFFER_LEN/4 + 1;
       fi = AUDIO_BUFFER_LEN/2 - fi;     // Invert frequencies due to I/Q phase error
 
+#ifdef __FLOAT_FFT__
       RSSI = 10*log10(data[2*fi]*data[2*fi] + data[2*fi+1]*data[2*fi+1]) - 120;         // dBm
-
+#endif
+#ifdef __INT_FFT__
+      RSSI = 10*log10(data[fi]*data[fi] + data[fi+AUDIO_BUFFER_LEN/2]*data[fi+AUDIO_BUFFER_LEN/2]) - 90;         // dBm
+#endif
       stored_t[i] = corr[2*fi]*20.0 - 10;         // dBm
       temp_t[i] = corr[2*fi+1]*20.0 - 10;         // dBm
       trace[TRACE_STORED].enabled = true;
       trace[TRACE_TEMP].enabled = true;
-
- //      RSSI = sqrt(data[2*i]*data[2*i] + data[2*i+1]*data[2*i+1])/44.0 - 120;          // Linear
-#else                           // integer FFT
-          RSSI = sqrt(rfft[i]*rfft[i] + ifft[i]*ifft[i])/440.0+40;
-#endif
-#else
-      float r = rfft[i];                  // Log
-      if (r < 0)
-        r = -r;
-      float im = ifft[i];
-      if (im < 0)
-        im = -im;
-      if (r == 0)
-        r = 1;
-      if (im==0)
-        im = 1;
-      stored_t[i] = (log10(r) * 2.0 + log10(im) * 2.0)/2.0 - 80.0;
-#endif
     } else
       RSSI = -150.0;
 // ----------- end FFT test ---------------

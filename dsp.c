@@ -32,17 +32,23 @@ float data[AUDIO_BUFFER_LEN];
 float window[AUDIO_BUFFER_LEN];
 #endif
 
-#ifdef __INT_FFT
+#ifdef __INT_FFT__
 static int fix_fft(short fr[], short fi[], short m, short inverse);
-int16_t rfft[512];
-int16_t ifft[512];
+int16_t data[AUDIO_BUFFER_LEN];
+int16_t window[AUDIO_BUFFER_LEN];
 #endif
+
 volatile float rsum = 0, isum = 0;
 
 void dsp_process(int16_t *capture, size_t length)
 {
   int s = length/2;
   int32_t rzero = 0, izero = 0;
+  int bits = 1;
+  while (1<<bits < s)
+    bits++;
+
+
 #if 1                       // Remove DC
   for (int i=0;i<s;i++) {
     rzero += capture[i*2+0];
@@ -51,17 +57,12 @@ void dsp_process(int16_t *capture, size_t length)
   rzero = rzero >> 8;
   izero = izero >> 8;
 #endif
-//  int16_t *rfft = (int16_t *)&spi_buffer[0];
-//  int16_t *ifft = (int16_t *)&spi_buffer[512];
 #ifdef __FLOAT_FFT__                                            // real FFT
 #if 1       // Do FFT
   for (int i=0;i<s;i++) {
     data[2*i+0] = ((float)(capture[i*2+0] - rzero))*window[i];
     data[2*i+1] = ((float)(capture[i*2+1] - izero))*window[i];
   }
-  int bits = 1;
-  while (1<<bits < s)
-    bits++;
   FFT(data, bits, true);
 
 
@@ -82,29 +83,31 @@ void dsp_process(int16_t *capture, size_t length)
 #endif
 #endif
 
-#ifdef __INT_FFT__
 
-  for (int i=0;i<AUDIO_BUFFER_LEN;i++) {
-    rfft[i] = capture[i*2+0] - rzero;
-    ifft[i] = capture[i*2+1] - izero;
-    rfft[511 - i] = 0;// rfft[i];    // Mirror real
-    ifft[511 - i] = 0;// -ifft[i]; // Conjugate mirror for imaginary part
+#ifdef __INT_FFT__
+  int16_t *re = &data[0];
+  int16_t *im = &data[length/2];
+
+  for (int i = 0, j = 0; i < (int)length; i +=2, j++) {
+    re[j] = (((int32_t)(capture[i] - rzero)) * window[j]) >> 16;  //
+    im[j] = (((int32_t)(capture[i+1] - izero)) * window[j]) >> 16;  //
   }
-  int scale = fix_fft(rfft,ifft, 9,false);
+  int scale = fix_fft(re,im, bits,false);
 #endif
 }
 
 
 void dsp_init(void) {
-#ifdef __FLOAT_FFT__
-
   for (int i = 0; i < AUDIO_BUFFER_LEN/2; i++) {
 //#define PI  3.14159265358979
 #define A 0.16
 #define WINDOW(n) ((1.0-A)/2 - 0.5 * cos((2.0*PI*n)/(AUDIO_BUFFER_LEN/2-1)) + (A/2.0)*cos((4*PI*n)/(AUDIO_BUFFER_LEN/2-1)))
+#ifdef __FLOAT_FFT__
     window[i] = WINDOW(i);
-  }
+#else
+    window[i] = (int16_t) (MAX_INT16 * WINDOW(i));
 #endif
+  }
 }
 
 #ifdef __FLOAT_FFT__           // float fft

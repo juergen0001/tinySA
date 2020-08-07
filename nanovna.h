@@ -39,8 +39,8 @@
 #define __SPUR__                // Does spur reduction by shifting IF
 #define __ENABLE_CLK2__
 #define __TLV__
-#define __FLOAT_FFT__
-//#define __INT_FFT__
+//#define __FLOAT_FFT__
+#define __INT_FFT__
 /*
  * main.c
  */
@@ -243,7 +243,7 @@ void sweep_remote(void);
  * dsp.c
  */
 // 256 stereo samples per DSP
-#define AUDIO_BUFFER_LEN 512
+#define AUDIO_BUFFER_LEN 512        // tested from 16 to 512, must be power of 2
 
 extern int16_t rx_buffer[AUDIO_BUFFER_LEN*2]; //
 
@@ -257,14 +257,15 @@ extern int16_t samp_buf[];
 #endif
 void dsp_process(int16_t *src, size_t len);
 void dsp_init(void);
+
+#define MAX_INT16   32767
 #ifdef __FLOAT_FFT__
 void FFT(float data[], int m, bool forward);
 extern float data[AUDIO_BUFFER_LEN];
 #endif
 
 #ifdef __INT_FFT__
-extern int16_t rfft[512];
-extern int16_t ifft[512];
+extern int16_t data[AUDIO_BUFFER_LEN];
 #endif
 extern volatile uint8_t wait_count;
 #ifdef __VNA__
