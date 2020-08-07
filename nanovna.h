@@ -38,6 +38,9 @@
 //#define __ULTRA_SA__            // Adds ADF4351 control for extra high 1st IF stage
 #define __SPUR__                // Does spur reduction by shifting IF
 #define __ENABLE_CLK2__
+#define __TLV__
+#define __FLOAT_FFT__
+//#define __INT_FFT__
 /*
  * main.c
  */
@@ -254,10 +257,12 @@ extern int16_t samp_buf[];
 #endif
 void dsp_process(int16_t *src, size_t len);
 void dsp_init(void);
+#ifdef __FLOAT_FFT__
 void FFT(float data[], int m, bool forward);
-#if 1
 extern float data[AUDIO_BUFFER_LEN];
-#else
+#endif
+
+#ifdef __INT_FFT__
 extern int16_t rfft[512];
 extern int16_t ifft[512];
 #endif

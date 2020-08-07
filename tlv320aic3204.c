@@ -29,13 +29,21 @@ static const uint8_t conf_data_pll[] = {
   // len, ( reg, data ), 
   2, 0x00, 0x00, /* Initialize to Page 0 */
   2, 0x01, 0x01, /* Initialize the device through software reset */
-#ifdef REFCLK_8000KHZ
+#if 0
+2, 0x04, 0x43,
+2, 0x05, 0x91,
+2, 0x06, 0x0a,
+2, 0x07, 29,
+2, 0x08, 96,
+#else
+  #ifdef REFCLK_8000KHZ
   // MCLK = 8.000MHz * 12.2880 = 98.304MHz,
   2, 0x04, 0x03,           // PLL Clock Low (80MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
   2, 0x05, 0x91,           // Power up PLL, P=1,R=1
   2, 0x06, 12,             // J=10
   2, 0x07, (2880>>8)&0xFF, // D=7520 = 0x1D60
   2, 0x08, (2880>>0)&0xFF,
+#endif
 #endif
   0 // sentinel
 };
@@ -105,12 +113,30 @@ static const uint8_t conf_96k_data_clk[] = {
 };
 
 // default fs=192kHz
-static const uint8_t conf_192k_data_clk[] = {
+static const uint8_t conf_192k_data_clk[] =
+{
+#if 1
+ 2, 0x0b, 0x82, /* Power up the NDAC divider with value 2 */
+ 2, 0x0c, 0x87, /* Power up the MDAC divider with value 7 */
+ 2, 0x0d, 0x00, /* Program the OSR of DAC to 32 */
+ 2, 0x0e, 0x20,
+ 2, 0x3c, 17, //0x08, /* Set the DAC Mode to PRB_P17 (reduce resource) */
+ //2, 0x3c, 25, /* Set the DAC Mode to PRB_P25 */
+ 2, 0x1b, 0x0c, /* Set the BCLK,WCLK as output */
+ 2, 0x1e, 0x80 + 7, /* Enable the BCLKN divider with value 7 */
+ 2, 0x25, 0xee, /* DAC power up */
+
+ 2, 0x12, 0x81, /* Power up the NADC divider with value 1 */
+ 2, 0x13, 0x87, /* Power up the MADC divider with value 7 */
+ 2, 0x14, 0x40, /* Program the OSR of ADC to 64 */
+ 2, 0x3d, 0x01, /* Select ADC PRB_R1 */
+ #else
+
 // Clock config, default fs=192kHz
 // from PLL 98.304MHz/(2*8*32) = 192kHz
 // DAC setting, need only for set ADC sample rate output
-  2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
-  2, 0x0c, 0x88,     // Power up the MDAC divider with value 8
+  2, 0x0b, 0x82,    // Power up the NDAC divider with value 2
+  2, 0x0c, 0x88,    // Power up the MDAC divider with value 8
   2, 0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 32
   2, 0x0e, 0x20,     // DAC OSR Setting Register 2 (LSB)
   2, 0x3c, 0x01,     // Set the DAC Mode to PRB_P1
@@ -125,12 +151,36 @@ static const uint8_t conf_192k_data_clk[] = {
 
   2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
   2, 0x1e, 0x80 + 8,// Enable the BCLKN divider with value 8 (I2S clock = 98.304MHz/(NDAC*8) = 192kHz * (16+16)
+#endif
   0 // sentinel
 };
 
 // default fs=384kHz
-static const uint8_t conf_384k_data_clk[] = {
-// Clock config, default fs=384kHz
+static const uint8_t conf_384k_data_clk[] =
+{
+#if 1
+ // Clock config, default fs=384kHz
+ // from PLL 98.304MHz/(2*4*32) = 384kHz
+ // DAC setting, need only for set ADC sample rate output
+   2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
+   2, 0x0c, 0x84,     // Power up the MDAC divider with value 8
+   2, 0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 32
+   2, 0x0e, 0x20,     // DAC OSR Setting Register 2 (LSB)
+   2, 0x3c,   17,     // Set the DAC Mode to PRB_P1
+   2, 0x25, 0x00,     // DAC power down
+ // ADC output sample rate depend from DAC, but internal use this settings
+   2, 0x12, 0x82,     // Power up the NADC divider with value 2
+   2, 0x13, 0x82,     // Power up the MADC divider with value 4
+   2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 128
+   2, 0x3d,    7,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
+ //  0x3d, 0x07,      // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
+   2, 0x24, 0xee,     // ADC power up
+
+ 0x1b, 0x0c,     // Set the BCLK,WCLK as output
+ 0x1e, 0x80 + 4,// Enable the BCLKN divider with value 4 (I2S clock = 98.304MHz/(NDAC*4) = 384kHz * (16+16)#else
+
+#else
+ // Clock config, default fs=384kHz
 // from PLL 98.304MHz/(2*4*32) = 384kHz
 // DAC setting, need only for set ADC sample rate output
   2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
@@ -141,7 +191,7 @@ static const uint8_t conf_384k_data_clk[] = {
   2, 0x25, 0x00,     // DAC power down
 // ADC output sample rate depend from DAC, but internal use this settings
   2, 0x12, 0x82,     // Power up the NADC divider with value 2
-  2, 0x13, 0x84,     // Power up the MADC divider with value 4
+  2, 0x13, 0x82,     // Power up the MADC divider with value 4
   2, 0x14, 0x80,     // ADC Oversampling (AOSR) set OSR of ADC to 128
   2, 0x3d, 0x01,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
 //  2, 0x3d, 0x07,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
@@ -149,7 +199,7 @@ static const uint8_t conf_384k_data_clk[] = {
 
   2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
   2, 0x1e, 0x80 + 4,// Enable the BCLKN divider with value 4 (I2S clock = 98.304MHz/(NDAC*4) = 384kHz * (16+16)
-
+#endif
   0 // sentinel
 };
 
@@ -166,7 +216,7 @@ static const uint8_t conf_768k_data_clk[] = {
   2, 0x25, 0x00,     // DAC power down
 // ADC output sample rate depend from DAC, but internal use this settings
   2, 0x12, 0x82,     // Power up the NADC divider with value 2
-  2, 0x13, 0x84,     // Power up the MADC divider with value 4
+  2, 0x13, 0x82,     // Power up the MADC divider with value 4
   2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 64
   2, 0x3d, 0x01,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
 //  2, 0x3d, 0x07,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
@@ -243,9 +293,9 @@ void tlv320aic3204_init(void)
 //  tlv320aic3204_config(conf_data_clk);      // old 48k settings!! not valid now
 //  tlv320aic3204_config(conf_48k_data_clk);  // new 48k
 //  tlv320aic3204_config(conf_96k_data_clk);  //  96k
-//  tlv320aic3204_config(conf_192k_data_clk);   // 192k
-//  tlv320aic3204_config(conf_384k_data_clk);  //  96k
-  tlv320aic3204_config(conf_768k_data_clk);   // 192k
+  tlv320aic3204_config(conf_192k_data_clk);   // 192k
+//  tlv320aic3204_config(conf_384k_data_clk);  //  384k
+//  tlv320aic3204_config(conf_768k_data_clk);   // 768k
   tlv320aic3204_config(conf_data_routing);
   wait_ms(40);
   tlv320aic3204_config(conf_data_unmute);

@@ -26,11 +26,13 @@ int16_t samp_buf[SAMPLE_LEN];
 int16_t ref_buf[SAMPLE_LEN];
 #endif //__DUMP_CMD__
 
-#if 1
+#ifdef __FLOAT_FFT__
 void FFT(float data[], int m, bool forward);
 float data[AUDIO_BUFFER_LEN];
 float window[AUDIO_BUFFER_LEN];
-#else
+#endif
+
+#ifdef __INT_FFT
 static int fix_fft(short fr[], short fi[], short m, short inverse);
 int16_t rfft[512];
 int16_t ifft[512];
@@ -51,7 +53,7 @@ void dsp_process(int16_t *capture, size_t length)
 #endif
 //  int16_t *rfft = (int16_t *)&spi_buffer[0];
 //  int16_t *ifft = (int16_t *)&spi_buffer[512];
-#if 1                                            // real FFT
+#ifdef __FLOAT_FFT__                                            // real FFT
 #if 1       // Do FFT
   for (int i=0;i<s;i++) {
     data[2*i+0] = ((float)(capture[i*2+0] - rzero))*window[i];
@@ -61,7 +63,9 @@ void dsp_process(int16_t *capture, size_t length)
   while (1<<bits < s)
     bits++;
   FFT(data, bits, true);
-#else
+
+
+  #else
   for (int i=0;i<s;i++) {
     data[2*i+0] = ((float)(capture[i*2+0] - rzero));
     data[2*i+1] = ((float)(capture[i*2+1] - izero));
@@ -76,8 +80,9 @@ void dsp_process(int16_t *capture, size_t length)
   rsum = sqrt(rsum/256.0);
   isum = sqrt(isum/256.0);
 #endif
+#endif
 
-  #else
+#ifdef __INT_FFT__
 
   for (int i=0;i<AUDIO_BUFFER_LEN;i++) {
     rfft[i] = capture[i*2+0] - rzero;
@@ -89,16 +94,20 @@ void dsp_process(int16_t *capture, size_t length)
 #endif
 }
 
+
 void dsp_init(void) {
+#ifdef __FLOAT_FFT__
+
   for (int i = 0; i < AUDIO_BUFFER_LEN/2; i++) {
 //#define PI  3.14159265358979
 #define A 0.16
 #define WINDOW(n) ((1.0-A)/2 - 0.5 * cos((2.0*PI*n)/(AUDIO_BUFFER_LEN/2-1)) + (A/2.0)*cos((4*PI*n)/(AUDIO_BUFFER_LEN/2-1)))
     window[i] = WINDOW(i);
   }
+#endif
 }
 
-#if 1           // float fft
+#ifdef __FLOAT_FFT__           // float fft
 
 void FFT(float data[], int m, bool forward)
 {
@@ -175,8 +184,9 @@ void FFT(float data[], int m, bool forward)
     }
 }
 
+#endif
 
-#else
+#ifdef __INT_FFT__
 
 /* fix_fft.c - Fixed-point in-place Fast Fourier Transform  */
 /*

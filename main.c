@@ -2773,8 +2773,10 @@ goto again;
   tlv320aic3204_set_gain(1, 1);
   i2sInit();
   i2sObjectInit(&I2SD2);
-//  i2sStart(&I2SD2, &i2sconfig);
-//  i2sStartExchange(&I2SD2);
+#ifdef __TLV__
+  i2sStart(&I2SD2, &i2sconfig);
+  i2sStartExchange(&I2SD2);
+#endif
   tlv320aic3204_select(0);      // Reflection port
   RDA5815_init();
   RDA5815_set_freq(950000,4000);   // Set to mobile phone base freq
@@ -2801,11 +2803,22 @@ goto again;
   sweep(false);
   set_sweep_frequency(ST_STOP, (uint32_t) 350000000);
 
+
+
   set_refer_output(-1);
 //  ui_mode_menu();       // Show menu when autostarting mode
   ui_mode_normal();
 
+  set_mode(M_HIGH);
+  set_sweep_frequency(ST_CENTER, (uint32_t) 900000000);
+#ifdef __TLV__
+  set_sweep_frequency(ST_SPAN, (uint32_t) 192000);
+#else
+  set_sweep_frequency(ST_SPAN, (uint32_t) 2600000);
+#endif
   set_sweep_points(256);        // -------- FFT test --------
+  set_auto_reflevel(false);
+  set_reflevel(20.0);
 
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO-1, Thread1, NULL);
 

@@ -1,5 +1,4 @@
-/* All rights reserved.
- *
+ /*
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3, or (at your option)
@@ -1723,6 +1722,88 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
   return RSSI + correct_RSSI + correct_RSSI_freq; // add correction
 }
 
+float corr[AUDIO_BUFFER_LEN];
+
+
+#define CAVER 2
+#define complex_mul(r,a,b) { r[0] = (a)[0]*(b)[0] - (a)[1]*(b)[1]; r[1] = (a)[0]*(b)[1] + (a)[1]*(b)[1]; }
+// (a + bi) / (c + di) = ((ac + bd) / (c2 + d2)) + ((bc - ad) / (c2 + d2)i
+#define complex_div(r,a,b) { float cd2 = (b)[0]*(b)[0] + (b)[1]*(b)[1]; if (cd2>0) { (r)[0] = ((a)[0]*(b)[0] + (a)[1]*(b)[1])/cd2; (r)[1] = ((a)[1]*(b)[0] - (a)[0]*(b)[1])/cd2; } }
+
+static float phase(float *v)
+{
+  return 2 * atan2f(v[1], v[0]) / 3.141592653 * 90;
+}
+
+static float ampl(float *t)
+{
+  return sqrt(t[0]*t[0] + t[1]*t[1]);
+}
+
+float last_max = 0;
+float current_max = 0;
+
+volatile float ph1,ph2,ph3;
+#define LENGTH 10000
+volatile float c1,c2;
+
+void calculate_correlation(void)
+{
+volatile   float t[2];
+  current_max = 0;
+
+  for (int i = 1; i < AUDIO_BUFFER_LEN/2; i++)
+  {
+    int j = AUDIO_BUFFER_LEN - 1 - i*2;
+    int k = i*2;
+    float l1,l2;
+    float a1,a2;
+    int sign = (data[k+1] < 0.0? -1 : (data[k+1] > 0.0?1:0)); // sgn(SI)
+    ph1 = (ph1 * LENGTH - sign * data[k])/LENGTH+1;
+    ph2 = (ph2 * LENGTH + sign * data[k+1])/LENGTH+1;
+    sign = (data[k] < 0.0? -1 : (data[k] > 0.0?1:0)); // sgn(SQ)
+    ph3 = (ph3 * LENGTH + sign * data[k+1])/LENGTH+1;
+
+
+    l1 = ampl(&data[k]);
+    l2 = ampl(&data[j]);
+    if (current_max < l2)
+      current_max = l2;
+    a1 = phase(&data[k]);
+    a2 = phase(&data[j]);
+    volatile float da = a1-a2;
+    volatile float dl = l2/l1;
+    volatile float dk0 = data[k], dk1 = data[k+1], dj0 = data[j], dj1 = data[j+1];
+    complex_div(t,(float *)&data[k], (float *)&data[j]);
+
+    volatile float impact = 200;
+    if (last_max != 0 && dl > 10 && (l2 > last_max / 2 || l1 > last_max / 2)) {
+      corr[k] = ((da/100.0) + impact * corr[k] ) / (impact+1);
+      corr[k+1] = ((dl/100.0) + impact * corr[k+1]) / (impact+1);
+    }
+  }
+  last_max = current_max;
+  c1 = ph1/ph2;
+  c2 = sqrt((ph3*ph3 - ph1*ph1)/(ph2*ph2));
+
+
+  for (int i = 1; i < AUDIO_BUFFER_LEN/2; i++)
+  {
+    int j = AUDIO_BUFFER_LEN - 2 - i*2;
+    int k = i*2;
+    complex_mul(t,(float *)&corr[k], (float *)&data[j]);
+    float l = sqrt(t[0]*t[0] + t[1]*t[1]);
+
+    if (l> 1000) {
+//      data[k]   -= t[0]/7;
+//      data[k+1] += t[1]/7;
+    }
+  }
+
+
+}
+
+
 #define MAX_MAX 4
 int16_t max_index[MAX_MAX];
 int16_t cur_max = 0;
@@ -1774,13 +1855,14 @@ sweep_again:                                // stay in sweep loop when output mo
     scandirty = true;                                                       // This is the first pass with new settings
     dirty = false;
   }
-#if 1               // STM ADC
+#ifdef __TLV__                               // tlv ADC
+  while (wait_count) __WFI();
+  calculate_correlation();
+#else                                        // STM ADC
   START_PROFILE
   adc_multi_read((uint16_t *)rx_buffer, AUDIO_BUFFER_LEN);
   dsp_process(rx_buffer, AUDIO_BUFFER_LEN);
   STOP_PROFILE
-#else               // tlv ADC
-  while (wait_count) __WFI();
 #endif
 //----------------- end FFT test
 
@@ -1793,14 +1875,21 @@ sweep_again:                                // stay in sweep loop when output mo
     if (i<AUDIO_BUFFER_LEN/2) {             // Convert to
 #if 1                                   //
 #if 1                           // float FFT
-      int fi;
-      if (i < AUDIO_BUFFER_LEN/4)
-        fi = i + AUDIO_BUFFER_LEN/4;
+      int fi = i;
+      if (fi < AUDIO_BUFFER_LEN/4)
+        fi = fi + AUDIO_BUFFER_LEN/4;
       else
-        fi = i - AUDIO_BUFFER_LEN/4 + 1;
-//      fi = AUDIO_BUFFER_LEN/2 - fi;     // Invert frequencies due to I/Q phase error
+        fi = fi - AUDIO_BUFFER_LEN/4 + 1;
+      fi = AUDIO_BUFFER_LEN/2 - fi;     // Invert frequencies due to I/Q phase error
+
       RSSI = 10*log10(data[2*fi]*data[2*fi] + data[2*fi+1]*data[2*fi+1]) - 120;         // dBm
-//      RSSI = sqrt(data[2*i]*data[2*i] + data[2*i+1]*data[2*i+1])/44.0 - 120;          // Linear
+
+      stored_t[i] = corr[2*fi]*20.0 - 10;         // dBm
+      temp_t[i] = corr[2*fi+1]*20.0 - 10;         // dBm
+      trace[TRACE_STORED].enabled = true;
+      trace[TRACE_TEMP].enabled = true;
+
+ //      RSSI = sqrt(data[2*i]*data[2*i] + data[2*i+1]*data[2*i+1])/44.0 - 120;          // Linear
 #else                           // integer FFT
           RSSI = sqrt(rfft[i]*rfft[i] + ifft[i]*ifft[i])/440.0+40;
 #endif
