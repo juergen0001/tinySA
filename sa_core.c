@@ -1758,12 +1758,13 @@ volatile   float t[2];
     int k = i*2;
     float l1,l2;
     float a1,a2;
+#if 0
     int sign = (data[k+1] < 0.0? -1 : (data[k+1] > 0.0?1:0)); // sgn(SI)
     ph1 = (ph1 * LENGTH - sign * data[k])/LENGTH+1;
     ph2 = (ph2 * LENGTH + sign * data[k+1])/LENGTH+1;
     sign = (data[k] < 0.0? -1 : (data[k] > 0.0?1:0)); // sgn(SQ)
     ph3 = (ph3 * LENGTH + sign * data[k+1])/LENGTH+1;
-
+#endif
 
     l1 = ampl(&data[k]);
     l2 = ampl(&data[j]);
@@ -1772,20 +1773,28 @@ volatile   float t[2];
     a1 = phase(&data[k]);
     a2 = phase(&data[j]);
     volatile float da = a1-a2;
+    if (da > 180.0) da -= 180.0;
+    if (da < -180.0) da += 180.0;
     volatile float dl = l2/l1;
     volatile float dk0 = data[k], dk1 = data[k+1], dj0 = data[j], dj1 = data[j+1];
     complex_div(t,(float *)&data[k], (float *)&data[j]);
 
     volatile float impact = 200;
     if (last_max != 0 && dl > 10 && (l2 > last_max / 2 || l1 > last_max / 2)) {
+#if 0
       corr[k] = ((da/100.0) + impact * corr[k] ) / (impact+1);
       corr[k+1] = ((dl/100.0) + impact * corr[k+1]) / (impact+1);
+#else
+      corr[k] = ((da/100.0) + impact * corr[k] ) / (impact+1);
+      corr[k+1] = ((dl/100.0) + impact * corr[k+1]) / (impact+1);
+#endif
     }
   }
   last_max = current_max;
+#if 0
   c1 = ph1/ph2;
   c2 = sqrt((ph3*ph3 - ph1*ph1)/(ph2*ph2));
-
+#endif
 
   for (int i = 1; i < AUDIO_BUFFER_LEN/2; i++)
   {
@@ -1857,7 +1866,9 @@ sweep_again:                                // stay in sweep loop when output mo
   }
 #ifdef __TLV__                               // tlv ADC
   while (wait_count) __WFI();
-// calculate_correlation();
+#ifdef __FLOAT_FFT__
+ calculate_correlation();
+#endif
 #else                                        // STM ADC
   START_PROFILE
   adc_multi_read((uint16_t *)rx_buffer, AUDIO_BUFFER_LEN);

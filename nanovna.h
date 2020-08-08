@@ -38,9 +38,9 @@
 //#define __ULTRA_SA__            // Adds ADF4351 control for extra high 1st IF stage
 #define __SPUR__                // Does spur reduction by shifting IF
 #define __ENABLE_CLK2__
-#define __TLV__
-//#define __FLOAT_FFT__
-#define __INT_FFT__
+#define __TLV__               // If disabled us F303 ADC's
+#define __FLOAT_FFT__
+//#define __INT_FFT__
 /*
  * main.c
  */
