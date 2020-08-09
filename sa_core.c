@@ -116,11 +116,17 @@ void reset_settings(int m)
   switch(m) {
   case M_LOW:
     minFreq = 0;
-    maxFreq = 350000000;
+    maxFreq = 2000000000;
     set_sweep_frequency(ST_START, (uint32_t) 0);
     set_sweep_frequency(ST_STOP, (uint32_t) 350000000);
-    setting.attenuate = 30.0;
-    setting.auto_attenuation = true;
+
+
+    set_IF(900000000);
+    set_sweep_frequency(ST_CENTER, (uint32_t) 10000000);
+    set_sweep_frequency(ST_SPAN, (uint32_t) 0);
+
+    setting.attenuate = 0.0;
+    setting.auto_attenuation = false;
     setting.sweep_time_us = 0;
     break;
 #ifdef __ULTRA__
@@ -555,7 +561,7 @@ void set_harmonic(int h)
 void set_step_delay(int d)                  // override RSSI measurement delay or set to one of three auto modes
 {
 
-  if ((3 <= d && d < 250) || d > 30000)         // values 0 (normal scan), 1 (precise scan) and 2(fast scan) have special meaning and are auto calculated
+  if (3 <= d  || d > 30000)         // values 0 (normal scan), 1 (precise scan) and 2(fast scan) have special meaning and are auto calculated
     return;
   if (d <3) {
     setting.step_delay_mode = d;
@@ -940,8 +946,12 @@ void setupSA(void)
   SI4432_Init();
   old_freq[0] = 0;
   old_freq[1] = 0;
+  old_freq[2] = 0;
+  old_freq[3] = 0;
   real_old_freq[0] = 0;
   real_old_freq[1] = 0;
+  real_old_freq[2] = 0;
+  real_old_freq[3] = 0;
   SI4432_Sel = SI4432_RX ;
   SI4432_Receive();
 
@@ -949,6 +959,11 @@ void setupSA(void)
   SI4432_Transmit(0);
   PE4302_init();
   PE4302_Write_Byte(0);
+
+  ADF4351_Setup();
+  RDA5815_init();
+  RDA5815_set_freq(2000000,4000);   // Set to 2GHz
+
 
 #if 0           // Measure fast scan time
   setting.sweep_time_us = 0;
@@ -1036,11 +1051,12 @@ void set_freq(int V, unsigned long freq)    // translate the requested frequency
       SI4432_Set_Frequency(freq);           // Not in fast mode
       real_old_freq[V] = freq;
     }
-#ifdef __ULTRA_SA__
-  } else {
+  } else if (V==2){
     ADF4351_set_frequency(V-2,freq,3);
-#endif
+  } else if (V==3){
+    RDA5815_set_freq(freq/1000,4000);
   }
+
   old_freq[V] = freq;
 }
 
@@ -1176,8 +1192,9 @@ void update_rbw(void)           // calculate the actual_rbw and the vbwSteps (# 
   }
   if (actual_rbw_x10 < 26)
     actual_rbw_x10 = 26;
-  if (actual_rbw_x10 > 6000)
-    actual_rbw_x10 = 6000;
+  if (actual_rbw_x10 > 200)
+    actual_rbw_x10 = 200;
+//  actual_rbw_x10 = 6000;
 
   if (setting.spur && actual_rbw_x10 > 3000)
     actual_rbw_x10 = 2500;           // if spur suppression reduce max rbw to fit within BPF
@@ -1365,6 +1382,7 @@ int avoid_spur(int f)                   // find if this frequency should be avoi
 //  int window = ((int)actual_rbw ) * 1000*2;
 //  if (window < 50000)
 //    window = 50000;
+  return false;
   if (setting.mode != M_LOW || !setting.auto_IF || actual_rbw_x10 > 3000)
     return(false);
   return binary_search(f);
@@ -1544,7 +1562,7 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
       local_IF = 0;
     else {
       if (setting.auto_IF)
-        local_IF = setting.spur ? 433900000 : 433800000;
+        local_IF = 2000000000;
       else
         local_IF = setting.frequency_IF;
     }
@@ -1575,7 +1593,7 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
 
       // --------------------- IF know, set the RX SI4432 frequency ------------------------
 
-      set_freq (SI4432_RX , local_IF);
+      set_freq (RDA5815_RX , local_IF);
 
 #ifdef __ULTRA__
     } else if (setting.mode == M_ULTRA) {               // No above/below IF mode in Ultra
@@ -1616,9 +1634,11 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
        set_freq (SI4432_LO, 433800000);                 // Second IF fixe in Ultra SA mode
 #else
        if (setting.mode == M_LOW && !setting.tracking && S_STATE(setting.below_IF)) // if in low input mode and below IF
-         set_freq (SI4432_LO, local_IF-lf);                                                 // set LO SI4432 to below IF frequency
+         set_freq (ADF4351_LO, local_IF-lf);                                                 // set LO SI4432 to below IF frequency
        else
-         set_freq (SI4432_LO, local_IF+lf);                                                 // otherwise to above IF
+         set_freq (ADF4351_LO, local_IF+lf);                                                 // otherwise to above IF
+       wait_count = 2;     //restart
+
 #endif
     }
 
@@ -1640,12 +1660,16 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
 
                           // jump here if in zero span mode and all HW frequency setup is done.
 
-#ifdef __FAST_SWEEP__
     if (i == 0 && setting.frequency_step == 0 && setting.trigger == T_AUTO && setting.spur == 0 && SI4432_step_delay == 0 && setting.repeat == 1 && setting.sweep_time_us < 100*ONE_MS_TIME) {
       // if ultra fast scanning is needed prefill the SI4432 RSSI read buffer
-      SI4432_Fill(MODE_SELECT(setting.mode), 0);
-    }
+#ifdef __FAST_SWEEP__
+        SI4432_Fill(MODE_SELECT(setting.mode), 0);                       // fast mode possible to pre-fill RSSI buffer
 #endif
+#ifdef __DSP_GET__
+        dsp_fill();
+#endif
+
+    }
     pureRSSI_t pureRSSI;
     //    if ( i < 3)
     //      shell_printf("%d %.3f %.3f %.1f\r\n", i, local_IF/1000000.0, lf/1000000.0, subRSSI);
@@ -1688,18 +1712,22 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
         if (additional_delay)
           my_microsecond_delay(additional_delay);
       }while(1);
-#ifdef __FAST_SWEEP__
       if (setting.spur == 0 && SI4432_step_delay == 0 && setting.repeat == 1 && setting.sweep_time_us < 100*ONE_MS_TIME) {
+#ifdef __FAST_SWEEP__
         SI4432_Fill(MODE_SELECT(setting.mode), 1);                       // fast mode possible to pre-fill RSSI buffer
-      }
 #endif
+#ifdef __DSP_GET__
+        dsp_fill();
+#endif
+      }
       if (setting.trigger == T_SINGLE) {
         set_trigger(T_DONE);
       }
       start_of_sweep_timestamp = chVTGetSystemTimeX();
     }
     else
-      pureRSSI = SI4432_RSSI(lf, MODE_SELECT(setting.mode));            // Get RSSI, either from pre-filled buffer
+//      pureRSSI = SI4432_RSSI(lf, MODE_SELECT(setting.mode));            // Get RSSI, either from pre-filled buffer
+      pureRSSI = float_TO_PURE_RSSI(dsp_getmax());
 
 #ifdef __SPUR__
     static pureRSSI_t spur_RSSI = -1;                               // Initialization only to avoid warning.
@@ -1857,8 +1885,10 @@ again:                          // Waiting for a trigger jumps back to here
 
 sweep_again:                                // stay in sweep loop when output mode and modulation on.
 
+
 //------------------ FFT test ------------
-  if (dirty ) {                                                        // if first point in scan and dirty
+#if 0
+if (dirty ) {                                                        // if first point in scan and dirty
     uint32_t f = (get_sweep_frequency(ST_CENTER)+500) / 1000;
     RDA5815_set_freq(f,4000);
     scandirty = true;                                                       // This is the first pass with new settings
@@ -1875,14 +1905,16 @@ sweep_again:                                // stay in sweep loop when output mo
   dsp_process(rx_buffer, AUDIO_BUFFER_LEN);
   STOP_PROFILE
 #endif
+#endif
 //----------------- end FFT test
 
   // ------------------------- start sweep loop -----------------------------------
   for (int i = 0; i < sweep_points; i++) {
     // --------------------- measure -------------------------
 
-//    RSSI = PURE_TO_float(perform(break_on_operation, i, frequencies[i], setting.tracking));    // Measure RSSI for one of the frequencies
-// ----------------- FFT test --------------------------
+    RSSI = PURE_TO_float(perform(break_on_operation, i, frequencies[i], setting.tracking));    // Measure RSSI for one of the frequencies
+    // ----------------- FFT test --------------------------
+#if 0
     if (i<AUDIO_BUFFER_LEN/2) {             // Convert to
 
       int fi = i;
@@ -1904,8 +1936,8 @@ sweep_again:                                // stay in sweep loop when output mo
       trace[TRACE_TEMP].enabled = true;
     } else
       RSSI = -150.0;
+#endif
 // ----------- end FFT test ---------------
-
     // if break back to top level to handle ui operation
     if (refreshing)
       scandirty = false;
@@ -1913,7 +1945,6 @@ sweep_again:                                // stay in sweep loop when output mo
       if (setting.actual_sweep_time_us > ONE_SECOND_TIME && MODE_INPUT(setting.mode)) {
         ili9341_fill(OFFSETX, HEIGHT_NOSCROLL+1, WIDTH, 1, 0);              // Erase progress bar
       }
-      wait_count = 1;     //restart
       return false;
     }
 
@@ -2028,7 +2059,6 @@ sweep_again:                                // stay in sweep loop when output mo
     }           // end of input specific processing
   }  // ---------------------- end of sweep loop -----------------------------
 
-  wait_count = 1;     //restart
 
 
 

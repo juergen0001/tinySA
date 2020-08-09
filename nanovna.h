@@ -32,7 +32,8 @@
 #define __MEASURE__
 #define __SELFTEST__
 #define __CALIBRATE__
-#define __FAST_SWEEP__          // Pre-fill SI4432 RSSI buffer  to get fastest sweep in zero span mode
+// #define __FAST_SWEEP__          // Pre-fill SI4432 RSSI buffer  to get fastest sweep in zero span mode
+#define __DSP_GET__
 #define __AUDIO__
 //#define __ULTRA__             // Add harmonics mode on low input.
 //#define __ULTRA_SA__            // Adds ADF4351 control for extra high 1st IF stage
@@ -257,6 +258,8 @@ extern int16_t samp_buf[];
 #endif
 void dsp_process(int16_t *src, size_t len);
 void dsp_init(void);
+void dsp_fill(void);
+float dsp_getmax(void);
 
 #define MAX_INT16   32767
 #ifdef __FLOAT_FFT__

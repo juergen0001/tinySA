@@ -29,7 +29,15 @@ static const uint8_t conf_data_pll[] = {
   // len, ( reg, data ), 
   2, 0x00, 0x00, /* Initialize to Page 0 */
   2, 0x01, 0x01, /* Initialize the device through software reset */
-#ifdef REFCLK_8000KHZ
+#if 0
+  // MCLK = 8.000MHz * 12.800 =  102.400MHz
+  2, 0x04, 0x43,           // PLL Clock High (92MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
+  2, 0x05, 0x91,           // Power up PLL, P=1,R=1
+  2, 0x06, 12,             //
+  2, 0x07, (800>>8)&0xFF,  //
+  2, 0x08, (800>>0)&0xFF,
+#else
+  #ifdef REFCLK_8000KHZ
   // MCLK = 8.000MHz * 12.2880 = 98.304MHz,
   2, 0x04, 0x03,           // PLL Clock Low (80MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
   2, 0x05, 0x91,           // Power up PLL, P=1,R=1
@@ -37,6 +45,8 @@ static const uint8_t conf_data_pll[] = {
   2, 0x07, (2880>>8)&0xFF, // D=7520 = 0x1D60
   2, 0x08, (2880>>0)&0xFF,
 #endif
+#endif
+
   0 // sentinel
 };
 

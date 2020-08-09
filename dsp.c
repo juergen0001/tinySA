@@ -39,6 +39,7 @@ int16_t window[AUDIO_BUFFER_LEN];
 #endif
 
 volatile float rsum = 0, isum = 0;
+static int16_t *l_c;
 
 void dsp_process(int16_t *capture, size_t length)
 {
@@ -48,6 +49,7 @@ void dsp_process(int16_t *capture, size_t length)
   while (1<<bits < s)
     bits++;
 
+  l_c = capture;            // Only to get raw audio
 
 #if 1                       // Remove DC
   for (int i=0;i<s;i++) {
@@ -96,7 +98,58 @@ void dsp_process(int16_t *capture, size_t length)
 #endif
 }
 
+static int dsp_filled = false;
+static int dsp_index = 0;
 
+void dsp_fill(void)
+{
+  while (wait_count) __WFI();
+  dsp_filled = true;
+  dsp_index = 0;
+}
+
+float dsp_get(int fi)
+{
+  if (fi < AUDIO_BUFFER_LEN/4)
+    fi = fi + AUDIO_BUFFER_LEN/4;
+  else
+    fi = fi - AUDIO_BUFFER_LEN/4 + 1;
+//  fi = AUDIO_BUFFER_LEN/2 - fi;     // Invert frequencies due to I/Q phase error
+
+#ifdef __FLOAT_FFT__
+  float sub_data = data[2*fi]*data[2*fi] + data[2*fi+1]*data[2*fi+1];         // dBm
+#endif
+#ifdef __INT_FFT__
+  sub_data = data[fi]*data[fi] + data[fi+AUDIO_BUFFER_LEN/2]*data[fi+AUDIO_BUFFER_LEN/2];         // dBm
+#endif
+  return sub_data;
+}
+
+float dsp_getmax(void) {
+  float maxdata=0;
+  if (dsp_filled) {
+    if (dsp_index == AUDIO_BUFFER_LEN/2 - 1)
+      dsp_filled = false;
+ //   return l_c[2*(dsp_index++)] / 10;            // <---- uncomment to see raw input signal
+    maxdata = dsp_get(dsp_index++);
+  } else {
+
+  while (wait_count) __WFI();
+
+  for (int i=1; i < AUDIO_BUFFER_LEN/2; i++) {
+    float sub_data = dsp_get(i);
+    if (maxdata < sub_data)
+      maxdata = sub_data;
+  }
+  }
+#ifdef __FLOAT_FFT__
+    float RSSI = 10*log10(maxdata) - 30;         // dBm
+#endif
+#ifdef __INT_FFT__
+    float RSSI = 10*log10(maxdata) - 90;         // dBm
+#endif
+  return RSSI;
+}
 void dsp_init(void) {
   for (int i = 0; i < AUDIO_BUFFER_LEN/2; i++) {
 //#define PI  3.14159265358979

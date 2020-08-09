@@ -2734,10 +2734,8 @@ goto again;
   int i = sdReadTimeout(&SD1,buf,10,TIME_IMMEDIATE);
 goto again;
 #endif
-#ifdef __ULTRA_SA__
-  ADF4351_Setup();
-#endif
-  /*
+
+/*
  * SPI LCD Initialize
  */
   ili9341_init();
@@ -2778,8 +2776,6 @@ goto again;
   i2sStartExchange(&I2SD2);
 #endif
   tlv320aic3204_select(0);      // Reflection port
-  RDA5815_init();
-  RDA5815_set_freq(950000,4000);   // Set to mobile phone base freq
 //  fill_dummy();
   dsp_init();
   wait_count = 1;
@@ -2793,6 +2789,7 @@ goto again;
 //    menu_mode_cb(setting.mode,0);
 //  }
   redraw_frame();
+#if 0
   set_mode(M_HIGH);
   set_sweep_frequency(ST_STOP, (uint32_t) 30000000);
   sweep(false);
@@ -2801,16 +2798,17 @@ goto again;
   set_mode(M_LOW);
   set_sweep_frequency(ST_STOP, (uint32_t) 4000000);
   sweep(false);
-  set_sweep_frequency(ST_STOP, (uint32_t) 350000000);
+#endif
+  set_sweep_frequency(ST_STOP, (uint32_t) 20000000);
 
 
 
   set_refer_output(-1);
 //  ui_mode_menu();       // Show menu when autostarting mode
   ui_mode_normal();
-
+#if 0
   set_mode(M_HIGH);
-  set_sweep_frequency(ST_CENTER, (uint32_t) 900000000);
+  set_sweep_frequency(ST_CENTER, (uint32_t) 2000000000);
 #ifdef __TLV__
   set_sweep_frequency(ST_SPAN, (uint32_t) 192000);
 #else
@@ -2819,6 +2817,7 @@ goto again;
   set_sweep_points(256);        // -------- FFT test --------
   set_auto_reflevel(false);
   set_reflevel(20.0);
+#endif
 
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO-1, Thread1, NULL);
 

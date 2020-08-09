@@ -52,13 +52,13 @@ static uint32_t new_port_moder;
 
 
 #define CS_SI0_HIGH     palSetPad(GPIOB, GPIOB_RX_SEL)
-#define CS_SI1_HIGH     palSetPad(GPIOB, GPIOB_RX_SEL)      // Used to be GPIOB_LO_SEL
+#define CS_SI1_HIGH     palSetPad(GPIOB, GPIOB_LO_SEL)
 // #define CS_PE_HIGH      palSetPad(GPIOA, GPIOA_PE_SEL)
 
 #define RF_POWER_HIGH   palSetPad(GPIOB, GPIOB_RF_PWR)
 
 #define CS_SI0_LOW      palClearPad(GPIOB, GPIOB_RX_SEL)
-#define CS_SI1_LOW      palClearPad(GPIOB, GPIOB_RX_SEL)      // Used to be GPIOB_LO_SEL
+#define CS_SI1_LOW      palClearPad(GPIOB, GPIOB_LO_SEL)
 // #define CS_PE_LOW       palClearPad(GPIOA, GPIOA_PE_SEL)
 
 #define SPI1_CLK_HIGH   palSetPad(GPIOB, GPIOB_SPI_SCLK)
@@ -122,7 +122,6 @@ static void shiftOut(uint8_t val)
   }while((++i) & 0x07);
 #endif
 }
-
 
 static uint8_t shiftIn(void)
 {
@@ -202,7 +201,7 @@ static void shiftOutBuf(uint8_t *buf, uint16_t size) {
 }
 #endif
 
-const uint16_t SI_nSEL[MAX_SI4432+1] = { GPIOB_RX_SEL, GPIOB_RX_SEL, 0}; // #3 is dummy!!!!!! 2nd used to be GPIOB_LO_SEL
+const uint16_t SI_nSEL[MAX_SI4432+1] = { GPIOB_RX_SEL, GPIOB_LO_SEL, 0}; // #3 is dummy!!!!!!
 
 volatile int SI4432_Sel = 0;         // currently selected SI4432
 // volatile int SI4432_guard = 0;
@@ -792,6 +791,7 @@ bool PE4302_Write_Byte(unsigned char DATA )
 #endif
 
 
+
 #if 0
 //-----------------SI4432 dummy------------------
 void SI4432_Write_Byte(unsigned char ADR, unsigned char DATA ) {}
@@ -848,23 +848,51 @@ float Simulated_SI4432_RSSI(uint32_t i, int s)
 #endif
 //------------------------------- ADF4351 -------------------------------------
 
+#ifdef __ULTRA_SA__
+
 #define bitRead(value, bit) (((value) >> (bit)) & 0x01)
 #define bitSet(value, bit) ((value) |= (1UL << (bit)))
 #define bitClear(value, bit) ((value) &= ~(1UL << (bit)))
 #define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
-#define CS_ADF0_HIGH     palSetPad(GPIOB, 10)
-#define CS_ADF1_HIGH     palSetPad(GPIOB, 10)
+#define CS_ADF0_HIGH     palSetPad(GPIOA, 9)
+#define CS_ADF1_HIGH     palSetPad(GPIOA, 10)
 
-#define CS_ADF0_LOW     palClearPad(GPIOB, 10)
-#define CS_ADF1_LOW     palClearPad(GPIOB, 10)
+#define CS_ADF0_LOW     palClearPad(GPIOA, 9)
+#define CS_ADF1_LOW     palClearPad(GPIOA, 10)
+
+#define SPI3_CLK_HIGH   palSetPad(GPIOA, 1)
+#define SPI3_CLK_LOW    palClearPad(GPIOA, 1)
+
+#define SPI3_SDI_HIGH   palSetPad(GPIOA, 2)
+#define SPI3_SDI_LOW    palClearPad(GPIOA, 2)
+
+
+void ADF_shiftOut(uint8_t val)
+{
+     uint8_t i;
+     for (i = 0; i < 8; i++)  {
+           if (val & (1 << (7 - i)))
+             SPI3_SDI_HIGH;
+           else
+             SPI3_SDI_LOW;
+//           chThdSleepMicroseconds(10);
+           SPI3_CLK_HIGH;
+//           chThdSleepMicroseconds(10);
+           SPI3_CLK_LOW;
+//           chThdSleepMicroseconds(10);
+     }
+}
+
+//unsigned long registers[6] =  {0x4580A8, 0x80080C9, 0x4E42, 0x4B3, 0xBC803C, 0x580005} ;
+//unsigned long registers[6] =  {0x4C82C8, 0x80083E9, 0x6E42, 0x8004B3, 0x8C81FC, 0x580005} ;
 
 //uint32_t registers[6] =  {0x320000, 0x8008011, 0x4E42, 0x4B3,0x8C803C , 0x580005} ;         //25 MHz ref
 
 uint32_t registers[6] =  {0xA00000, 0x8000011, 0x4E42, 0x4B3,0xDC003C , 0x580005} ;         //10 MHz ref
 
 int debug = 0;
-int ADF4351_LE[2] = { 10, 10};
+int ADF4351_LE[2] = { 9, 10};
 int ADF4351_Mux = 7;
 
 
@@ -899,23 +927,22 @@ byte lock=2; //Not used
 
 // Lock = A4
 
-void ADF4351_Setup(void)
+void ADF4351_Setup()
 {
 //  palSetPadMode(GPIOA, 1, PAL_MODE_OUTPUT_PUSHPULL );
 //  palSetPadMode(GPIOA, 2, PAL_MODE_OUTPUT_PUSHPULL );
 
-//  SPI3_CLK_HIGH;
-//  SPI3_SDI_HIGH;
+  SPI3_CLK_HIGH;
+  SPI3_SDI_HIGH;
   CS_ADF0_HIGH;
-//  CS_ADF1_HIGH;
-
-  //  bitSet (registers[2], 17); // R set to 8
+  CS_ADF1_HIGH;
+//  bitSet (registers[2], 17); // R set to 8
 //  bitClear (registers[2], 14); // R set to 8
 
 //  while(1) {
 //
-  ADF4351_set_frequency(0,2000000000,0);
-//  ADF4351_set_frequency(1,150000000,0);
+  ADF4351_set_frequency(0,100000000,0);
+  ADF4351_set_frequency(1,150000000,0);
 //  ADF4351_Set(0);
 //  ADF4351_Set(1);
 //  chThdSleepMilliseconds(1000);
@@ -933,18 +960,27 @@ void ADF4351_Setup(void)
 
 void ADF4351_WriteRegister32(int channel, const uint32_t value)
 {
-  //  set_SPI_mode(SPI_MODE_SI);
-  //  chThdSleepMicroseconds(10);
-  palClearPad(GPIOB, ADF4351_LE[channel]);
+  palClearPad(GPIOA, ADF4351_LE[channel]);
 //  chThdSleepMicroseconds(10);
-  for (int i = 3; i >= 0; i--) shiftOut((value >> (8 * i)) & 0xFF);
+  for (int i = 3; i >= 0; i--) ADF_shiftOut((value >> (8 * i)) & 0xFF);
 //  chThdSleepMicroseconds(10);
-  palSetPad(GPIOB, ADF4351_LE[channel]);
+  palSetPad(GPIOA, ADF4351_LE[channel]);
 //  chThdSleepMicroseconds(10);
-  palClearPad(GPIOB, ADF4351_LE[channel]);
+  palClearPad(GPIOA, ADF4351_LE[channel]);
 //  chThdSleepMicroseconds(10);
 }
 
+void ADF4351_disable_output()
+{
+    bitClear (registers[4], 5); // digital lock
+    ADF4351_Set(0);
+}
+
+void ADF4351_enable_output()
+{
+    bitSet (registers[4], 5); // digital lock
+    ADF4351_Set(0);
+}
 void ADF4351_Set(int channel)
 { for (int i = 5; i >= 0; i--) {
     ADF4351_WriteRegister32(channel, registers[i]);
@@ -952,24 +988,10 @@ void ADF4351_Set(int channel)
 }
 }
 
-void ADF4351_disable_output(void)
-{
-    bitClear (registers[4], 5); // digital lock
-    ADF4351_Set(0);
-}
-
-void ADF4351_enable_output(void)
-{
-    bitSet (registers[4], 5); // digital lock
-    ADF4351_Set(0);
-}
-
 void ADF4351_set_frequency(int channel, unsigned long freq, int drive)  // freq / 10Hz
 {
   ADF4351_prep_frequency(channel,freq, drive);
   ADF4351_Set(channel);
-  if (SI4432_step_delay>10)
-    my_microsecond_delay(SI4432_step_delay);
 }
 
 void ADF4351_spur_mode(int S)
@@ -1183,5 +1205,7 @@ void ADF4351_prep_frequency(int channel, unsigned long freq, int drive)  // freq
 }
 
 
+
+#endif
 
 #pragma GCC pop_options

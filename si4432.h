@@ -26,6 +26,9 @@
 
 #define SI4432_RX                          0
 #define SI4432_LO                          1
+#define ADF4351_LO                         2
+#define RDA5815_RX                         3
+
 // #define SI4432_DUMMY                       2     // never used
 
 #define SI4432_DEV_TYPE                    0x00
@@ -140,7 +143,6 @@ int SI4432_is_fast_mode(void);
 #endif
 #endif
 
-#ifdef __ULTRA_SA__
 extern int ADF4351_LE[];
 extern int debug;
 void   ADF4351_Setup(void);
@@ -159,7 +161,6 @@ void ADF4351_channel_spacing(int spacing);
 void ADF4351_CP(int p);
 void ADF4351_level(int p);
 int ADF4351_locked(void);
-#endif
 
 
 #endif //__SI4432_H__
