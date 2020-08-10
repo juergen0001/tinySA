@@ -38,8 +38,121 @@ int16_t data[AUDIO_BUFFER_LEN];
 int16_t window[AUDIO_BUFFER_LEN];
 #endif
 
-volatile float rsum = 0, isum = 0;
 static int16_t *l_c;
+float corr[AUDIO_BUFFER_LEN];
+
+#define SHOW(f,i)   {char string_buf[12];plot_printf(string_buf, sizeof string_buf, "%f", f);ili9341_drawstring(string_buf, 100+ i*50  , FREQUENCIES_YPOS);}
+
+#define CAVER 2
+#define complex_mul(r,a,b) { r[0] = (a)[0]*(b)[0] - (a)[1]*(b)[1]; r[1] = (a)[0]*(b)[1] + (a)[1]*(b)[1]; }
+// (a + bi) / (c + di) = ((ac + bd) / (c2 + d2)) + ((bc - ad) / (c2 + d2)i
+#define complex_div(r,a,b) { float cd2 = (b)[0]*(b)[0] + (b)[1]*(b)[1]; if (cd2>0) { (r)[0] = ((a)[0]*(b)[0] + (a)[1]*(b)[1])/cd2; (r)[1] = ((a)[1]*(b)[0] - (a)[0]*(b)[1])/cd2; } }
+
+static float phase(float *v)
+{
+  return 2 * atan2f(v[1], v[0]) / 3.141592653 * 90;
+}
+
+static float ampl(float *t)
+{
+  return sqrt(t[0]*t[0] + t[1]*t[1]);
+}
+
+float last_max = 0;
+float current_max = 0;
+
+volatile int32_t ph1,ph2,ph3;
+#define LENGTH ((1<<15) - 1)
+volatile float c1,c2;
+int aizero, arzero;
+
+void calculate_correlation(void)
+{
+volatile   float t[2];
+  current_max = 0;
+  ph1 = 0;
+  ph2 = 0;
+  ph3 = 0;
+
+  for (int i = 1; i < AUDIO_BUFFER_LEN/2; i++)
+  {
+    int j = AUDIO_BUFFER_LEN - 1 - i*2;
+    int k = i*2;
+    float l1,l2;
+    float a1,a2;
+#if 1
+    int s_i = l_c[k] - arzero,
+        s_q = l_c[k+1] - aizero;
+    int sign = (s_i < 0.0? -1 : (s_i > 0.0?1:0)); // sgn(SI)
+//    ph1 = (ph1 * LENGTH - sign * (float)s_q)/(LENGTH+1);
+//    ph2 = (ph2 * LENGTH + sign * (float)s_i)/(LENGTH+1);
+//    sign = (s_q < 0.0? -1 : (s_q > 0.0?1:0)); // sgn(SQ)
+//    ph3 = (ph3 * LENGTH + sign * (float)s_q)/(LENGTH+1);
+
+    ph1 +=  - sign * s_q;
+    ph2 += sign * s_i;
+    sign = (s_q < 0.0? -1 : (s_q > 0.0?1:0)); // sgn(SQ)
+    ph3 += sign * s_q;
+  }
+#endif
+#if 0
+  l1 = ampl(&data[k]);
+    l2 = ampl(&data[j]);
+    if (current_max < l2)
+      current_max = l2;
+    a1 = phase(&data[k]);
+    a2 = phase(&data[j]);
+    volatile float da = a1-a2;
+    if (da > 180.0) da -= 180.0;
+    if (da < -180.0) da += 180.0;
+    volatile float dl = l2/l1;
+    volatile float dk0 = data[k], dk1 = data[k+1], dj0 = data[j], dj1 = data[j+1];
+    complex_div(t,(float *)&data[k], (float *)&data[j]);
+
+    volatile float impact = 200;
+    if (last_max != 0 && dl > 10 && (l2 > last_max / 2 || l1 > last_max / 2)) {
+#if 0
+      corr[k] = ((da/100.0) + impact * corr[k] ) / (impact+1);
+      corr[k+1] = ((dl/100.0) + impact * corr[k+1]) / (impact+1);
+#else
+      corr[k] = ((da/100.0) + impact * corr[k] ) / (impact+1);
+      corr[k+1] = ((dl/100.0) + impact * corr[k+1]) / (impact+1);
+#endif
+    }
+  }
+  last_max = current_max;
+#endif
+  int aver;
+  if (ph2 > 30000) {
+    if (c2 == 0.0) aver = 0; else aver = 4;
+    c1 = ((c1 * aver) + (float)ph1/(float)ph2 ) / (aver + 1);
+    c2 = ((c2 * aver) + sqrt(((float)ph3*ph3 - (float)ph1*ph1)/((float)ph2*ph2)) ) / (aver+1);
+    SHOW(c1,0);
+    SHOW(c2,1);
+  }
+return;
+  for (int i = 1; i < AUDIO_BUFFER_LEN/2; i++)
+  {
+    int j = AUDIO_BUFFER_LEN - 2 - i*2;
+    int k = i*2;
+    complex_mul(t,(float *)&corr[k], (float *)&data[j]);
+    float l = sqrt(t[0]*t[0] + t[1]*t[1]);
+
+    if (l> 1000) {
+//      data[k]   -= t[0]/7;
+//      data[k+1] += t[1]/7;
+    }
+  }
+
+
+}
+
+
+
+
+
+
+volatile float rsum = 0, isum = 0;
 
 void dsp_process(int16_t *capture, size_t length)
 {
@@ -56,14 +169,15 @@ void dsp_process(int16_t *capture, size_t length)
     rzero += capture[i*2+0];
     izero += capture[i*2+1];
   }
-  rzero = rzero >> 8;
-  izero = izero >> 8;
+#define AVER_ZERO   20
+  arzero = (arzero * AVER_ZERO + (rzero >> 8))/(AVER_ZERO+1);
+  aizero = (aizero * AVER_ZERO + (izero >> 8))/(AVER_ZERO+1);
 #endif
 #ifdef __FLOAT_FFT__                                            // real FFT
 #if 1       // Do FFT
   for (int i=0;i<s;i++) {
-    data[2*i+0] = ((float)(capture[i*2+0] - rzero))*window[i];
-    data[2*i+1] = ((float)(capture[i*2+1] - izero))*window[i];
+    data[2*i+1] = ((float)(capture[i*2+1] - aizero))*window[i];
+    data[2*i+0] = ((float)(capture[i*2+0] - arzero))*window[i] * c2;//  - c1 * data[2*i+1];
   }
   FFT(data, bits, true);
 
@@ -104,6 +218,7 @@ static int dsp_index = 0;
 void dsp_fill(void)
 {
   while (wait_count) __WFI();
+  calculate_correlation();
   dsp_filled = true;
   dsp_index = 0;
 }
@@ -141,13 +256,14 @@ float dsp_getmax(void) {
     if (dsp_index == AUDIO_BUFFER_LEN/2 - 1)
       dsp_filled = false;
     if (audio_level)
-      return l_c[2*(dsp_index++) + (audio_level & 1)] / audio_level;            // <---- uncomment to see raw input signal
+      return l_c[2*(dsp_index++) + (audio_level & 1)] / audio_level; // Get the raw audio signal left or right channel
     maxdata = dsp_get(dsp_index++);
   } else {
 
   while (wait_count) __WFI();
-
-  for (int i=1; i < AUDIO_BUFFER_LEN/2; i++) {
+  calculate_correlation();
+#define IGNORE  10
+  for (int i=IGNORE; i < AUDIO_BUFFER_LEN/2 - IGNORE; i++) {
     float sub_data = dsp_get(i);
     if (maxdata < sub_data)
       maxdata = sub_data;

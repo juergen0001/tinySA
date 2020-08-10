@@ -244,7 +244,7 @@ void sweep_remote(void);
  * dsp.c
  */
 // 256 stereo samples per DSP
-#define AUDIO_BUFFER_LEN 1024       // tested from 16 to 512, must be power of 2
+#define AUDIO_BUFFER_LEN 512       // tested from 16 to 512, must be power of 2
 
 extern int16_t rx_buffer[AUDIO_BUFFER_LEN*2]; //
 
