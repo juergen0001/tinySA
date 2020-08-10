@@ -244,7 +244,7 @@ void sweep_remote(void);
  * dsp.c
  */
 // 256 stereo samples per DSP
-#define AUDIO_BUFFER_LEN 512        // tested from 16 to 512, must be power of 2
+#define AUDIO_BUFFER_LEN 1024       // tested from 16 to 512, must be power of 2
 
 extern int16_t rx_buffer[AUDIO_BUFFER_LEN*2]; //
 
@@ -260,7 +260,7 @@ void dsp_process(int16_t *src, size_t len);
 void dsp_init(void);
 void dsp_fill(void);
 float dsp_getmax(void);
-
+void set_audio_level(int);
 #define MAX_INT16   32767
 #ifdef __FLOAT_FFT__
 void FFT(float data[], int m, bool forward);

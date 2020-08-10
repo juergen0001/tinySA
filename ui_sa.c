@@ -403,7 +403,7 @@ static const keypads_t keypads_time[] = {
 enum {
   KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_REFLEVEL, KM_SCALE, KM_ATTENUATION,
   KM_ACTUALPOWER, KM_IF, KM_SAMPLETIME, KM_DRIVE, KM_LOWOUTLEVEL, KM_DECAY, KM_NOISE,
-  KM_10MHZ, KM_REPEAT, KM_OFFSET, KM_TRIGGER, KM_LEVELSWEEP, KM_SWEEP_TIME, KM_OFFSET_DELAY, KM_FAST_SPEEDUP,
+  KM_10MHZ, KM_REPEAT, KM_OFFSET, KM_TRIGGER, KM_LEVELSWEEP, KM_SWEEP_TIME, KM_OFFSET_DELAY, KM_FAST_SPEEDUP, KM_AUDIO_LEVEL,
   KM_NONE // always at enum end
 };
 
@@ -434,6 +434,7 @@ static const struct {
   {keypads_time        , "SWEEP\nSECONDS"},    // KM_SWEEP_TIME
   {keypads_positive    , "OFFSET\nDELAY"}, // KM_OFFSET_DELAY
   {keypads_positive    , "FAST\nSPEEDUP"}, // KM_FAST_SPEEDUP
+  {keypads_positive    , "AUDIO\nLEVEL"}, // KM_AUDIO_LEVEL
 };
 
 // ===[MENU CALLBACKS]=========================================================
@@ -1521,6 +1522,7 @@ static const menuitem_t menu_sweep_speed[] =
  { MT_KEYPAD,           KM_SWEEP_TIME, "SWEEP\nTIME",     "0..600s, 0=disable"},       // This must be item 3 to match highlighting
  { MT_SUBMENU,          0,             "SWEEP\nPOINTS",   menu_sweep_points},
  { MT_KEYPAD   | MT_LOW,KM_FAST_SPEEDUP,"FAST\nSPEEDUP",  "2..20, 0=disable"},
+ { MT_KEYPAD   | MT_LOW,KM_AUDIO_LEVEL,"AUDIO\nLEVEL",  "1..1000, 0=disable"},
  { MT_CANCEL,   0,             S_LARROW" BACK", NULL },
  { MT_NONE,     0, NULL, NULL } // sentinel
 };
@@ -1892,6 +1894,9 @@ set_numeric_value(void)
     break;
   case KM_FAST_SPEEDUP:
     set_fast_speedup(uistat.value);
+    break;
+  case KM_AUDIO_LEVEL:
+    set_audio_level(uistat.value);
     break;
   case KM_REPEAT:
     set_repeat(uistat.value);

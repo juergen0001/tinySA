@@ -110,6 +110,9 @@ void dsp_fill(void)
 
 float dsp_get(int fi)
 {
+  if (AUDIO_BUFFER_LEN/2 > 256)
+    fi = fi * ((AUDIO_BUFFER_LEN/2) / 256);
+
   if (fi < AUDIO_BUFFER_LEN/4)
     fi = fi + AUDIO_BUFFER_LEN/4;
   else
@@ -125,12 +128,20 @@ float dsp_get(int fi)
   return sub_data;
 }
 
+int audio_level = 0;
+
+void set_audio_level(int l)
+{
+  audio_level = l;
+}
+
 float dsp_getmax(void) {
   float maxdata=0;
   if (dsp_filled) {
     if (dsp_index == AUDIO_BUFFER_LEN/2 - 1)
       dsp_filled = false;
- //   return l_c[2*(dsp_index++)] / 10;            // <---- uncomment to see raw input signal
+    if (audio_level)
+      return l_c[2*(dsp_index++) + (audio_level & 1)] / audio_level;            // <---- uncomment to see raw input signal
     maxdata = dsp_get(dsp_index++);
   } else {
 
