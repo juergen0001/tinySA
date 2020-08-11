@@ -282,8 +282,8 @@ void tlv320aic3204_init(void)
 //  tlv320aic3204_config(conf_data_clk);      // old 48k settings!! not valid now
 //  tlv320aic3204_config(conf_48k_data_clk);  // new 48k
 //  tlv320aic3204_config(conf_96k_data_clk);  //  96k
-  tlv320aic3204_config(conf_192k_data_clk);   // 192k
-//  tlv320aic3204_config(conf_384k_data_clk);  //  384k
+//  tlv320aic3204_config(conf_192k_data_clk);   // 192k
+  tlv320aic3204_config(conf_384k_data_clk);  //  384k
 //  tlv320aic3204_config(conf_768k_data_clk);   // 768k
   tlv320aic3204_config(conf_data_routing);
   wait_ms(40);

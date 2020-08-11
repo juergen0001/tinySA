@@ -1765,7 +1765,7 @@ static bool sweep(bool break_on_operation)
   //    return;
   //  START_PROFILE;
 
-  palClearPad(GPIOC, GPIOC_LED);
+  //palClearPad(GPIOC, GPIOC_LED);
 
   downslope = true;             // Initialize the peak search algorithm
   temppeakLevel = -150;
@@ -2227,7 +2227,7 @@ if (dirty ) {                                                        // if first
   //  STOP_PROFILE;
   ili9341_fill(OFFSETX, HEIGHT_NOSCROLL+1, WIDTH, 1, 0);
 
-  palSetPad(GPIOC, GPIOC_LED);
+  //palSetPad(GPIOC, GPIOC_LED);
   return true;
 }
 
