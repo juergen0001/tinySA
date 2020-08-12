@@ -29,7 +29,7 @@ static const uint8_t conf_data_pll[] = {
   // len, ( reg, data ), 
   2, 0x00, 0x00, /* Initialize to Page 0 */
   2, 0x01, 0x01, /* Initialize the device through software reset */
-#if 0
+#if 1
   // MCLK = 8.000MHz * 12.800 =  102.400MHz
   2, 0x04, 0x43,           // PLL Clock High (92MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
   2, 0x05, 0x91,           // Power up PLL, P=1,R=1

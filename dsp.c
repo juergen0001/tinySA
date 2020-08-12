@@ -43,7 +43,7 @@ int fft_fill = 0;
 int fft_bits = 1;
 static int16_t *l_c;
 
-#define SHOW(f,i)   {char string_buf[12];plot_printf(string_buf, sizeof string_buf, "%f", f);ili9341_drawstring(string_buf, 100+ i*80  , FREQUENCIES_YPOS);}
+#define SHOW(f,i)   {char string_buf[12];plot_printf(string_buf, sizeof string_buf, "%f", f);ili9341_drawstring(string_buf, 150 + i*80  , FREQUENCIES_YPOS);}
 
 #define CAVER 2
 #define complex_mul(r,a,b) { r[0] = (a)[0]*(b)[0] - (a)[1]*(b)[1]; r[1] = (a)[0]*(b)[1] + (a)[1]*(b)[1]; }
@@ -136,6 +136,7 @@ void calculate_correlation(void)
 
 
 volatile float rsum = 0, isum = 0;
+volatile int32_t s_max;
 
 void dsp_process(int16_t *capture, size_t length)   // 2 samples per fft point
 {
@@ -144,14 +145,25 @@ void dsp_process(int16_t *capture, size_t length)   // 2 samples per fft point
 
   l_c = capture;            // Only to get raw audio
 
+  s_max = 0;
   for (int i=0;i<len_div_2;i++) {
     int16_t s;
     s = capture[i*2+0];
     rzero += s;
-    data[fft_fill++] = ((float)(s - arzero) );
+    s -= arzero;
+    data[fft_fill++] = (float)s;
+    if (s < 0)
+      s = -s;
+    if (s_max < s)
+      s_max = s;
     s = capture[i*2+1];
     izero += s;
-    data[fft_fill++] = ((float)(s - aizero) );
+    s -= aizero;
+    data[fft_fill++] = (float)s;
+    if (s < 0)
+      s = -s;
+    if (s_max < s)
+      s_max = s;
   }
   if (fft_fill < FFT_BUFFER_LEN)
     wait_count++;           // Get one more buffer
@@ -219,7 +231,7 @@ float dsp_get(int fi)
 }
 
 float dsp_getmax(void) {
-  float maxdata=0;
+  float maxdata = 0;
   if (dsp_filled) {
     if (dsp_index == FFT_BUFFER_LEN/2 - 1)
       dsp_filled = false;
@@ -229,15 +241,20 @@ float dsp_getmax(void) {
   } else {
     if (wait_count == 0)
       return -150;
-  while (wait_count) __WFI();
+    while (wait_count) __WFI();
+    maxdata = s_max*s_max;
+  }
+#if 1
+#else
   calculate_correlation();
 #define IGNORE  10
   for (int i=IGNORE; i < FFT_BUFFER_LEN/2 - IGNORE; i++) {
     float sub_data = dsp_get(i);
     if (maxdata < sub_data)
       maxdata = sub_data;
+    }
   }
-  }
+#endif
 #ifdef __FLOAT_FFT__
     float RSSI = 10*log10(maxdata) - 30;         // dBm
 #endif
@@ -246,6 +263,7 @@ float dsp_getmax(void) {
 #endif
   return RSSI;
 }
+
 void dsp_init(void) {
   for (int i = 0; i < FFT_BUFFER_LEN/4; i++) {
 //#define PI  3.14159265358979

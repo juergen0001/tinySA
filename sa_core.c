@@ -123,7 +123,7 @@ void reset_settings(int m)
 
     set_IF(900000000);
     set_sweep_frequency(ST_CENTER, (uint32_t) 10000000);
-    set_sweep_frequency(ST_SPAN, (uint32_t) 0);
+    set_sweep_frequency(ST_SPAN, (uint32_t) 00);
 
     setting.attenuate = 0.0;
     setting.auto_attenuation = false;
@@ -1192,15 +1192,15 @@ void update_rbw(void)           // calculate the actual_rbw and the vbwSteps (# 
   }
   if (actual_rbw_x10 < 26)
     actual_rbw_x10 = 26;
-  if (actual_rbw_x10 > 200)
-    actual_rbw_x10 = 200;
+  if (actual_rbw_x10 > 10000)   // x 0.1kHz
+    actual_rbw_x10 = 10000;
 //  actual_rbw_x10 = 6000;
 
   if (setting.spur && actual_rbw_x10 > 3000)
     actual_rbw_x10 = 2500;           // if spur suppression reduce max rbw to fit within BPF
 
-  SI4432_Sel =  MODE_SELECT(setting.mode);
-  actual_rbw_x10 = SI4432_SET_RBW(actual_rbw_x10);  // see what rbw the SI4432 can realize
+  //SI4432_Sel =  MODE_SELECT(setting.mode);
+  //actual_rbw_x10 = SI4432_SET_RBW(actual_rbw_x10);  // see what rbw the SI4432 can realize
 
   if (setting.frequency_step > 0 && MODE_INPUT(setting.mode)) { // When doing frequency scanning in input mode
     vbwSteps = ((int)(2 * (setting.vbw_x10 + (actual_rbw_x10/2)) / actual_rbw_x10)); // calculate # steps in between each frequency step due to rbw being less than frequency step
@@ -1820,8 +1820,10 @@ if (dirty ) {                                                        // if first
   // ------------------------- start sweep loop -----------------------------------
   for (int i = 0; i < sweep_points; i++) {
     // --------------------- measure -------------------------
-
+START_PROFILE
     RSSI = PURE_TO_float(perform(break_on_operation, i, frequencies[i], setting.tracking));    // Measure RSSI for one of the frequencies
+STOP_PROFILE
+
     // ----------------- FFT test --------------------------
 #if 0
     if (i<AUDIO_BUFFER_LEN/2) {             // Convert to
