@@ -68,7 +68,7 @@ VNA_SHELL_FUNCTION(cmd_modulation )
      goto usage;
   set_modulation(cmd_mod_val[m]);
 }
-
+#ifdef __SPUR__
 VNA_SHELL_FUNCTION(cmd_spur)
 {
   if (argc != 1) {
@@ -84,6 +84,7 @@ VNA_SHELL_FUNCTION(cmd_spur)
     goto usage;
   redraw_request |= REDRAW_CAL_STATUS | REDRAW_AREA;
 }
+#endif
 
 VNA_SHELL_FUNCTION(cmd_output)
 {

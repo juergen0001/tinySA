@@ -23,6 +23,8 @@
 #define REFCLK_8000KHZ
 #define AIC3204_ADDR 0x18
 
+int sample_rate;
+
 #define wait_ms(ms)     chThdSleepMilliseconds(ms)
 
 static const uint8_t conf_data_pll[] = {
@@ -279,12 +281,11 @@ static void tlv320aic3204_config(const uint8_t *data)
 void tlv320aic3204_init(void)
 {
   tlv320aic3204_config(conf_data_pll);
-//  tlv320aic3204_config(conf_data_clk);      // old 48k settings!! not valid now
-//  tlv320aic3204_config(conf_48k_data_clk);  // new 48k
-//  tlv320aic3204_config(conf_96k_data_clk);  //  96k
-//  tlv320aic3204_config(conf_192k_data_clk);   // 192k
-  tlv320aic3204_config(conf_384k_data_clk);  //  384k
-//  tlv320aic3204_config(conf_768k_data_clk);   // 768k
+//  tlv320aic3204_config(conf_48k_data_clk);  sample_rate = 5000; // new 48k
+//  tlv320aic3204_config(conf_96k_data_clk);  sample_rate = 100000; //  96k
+//  tlv320aic3204_config(conf_192k_data_clk);  sample_rate = 200000;  // 192k
+  tlv320aic3204_config(conf_384k_data_clk); sample_rate = 400000; //  384k
+//  tlv320aic3204_config(conf_768k_data_clk);  sample_rate = 800000;  // 768k
   tlv320aic3204_config(conf_data_routing);
   wait_ms(40);
   tlv320aic3204_config(conf_data_unmute);

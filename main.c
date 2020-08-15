@@ -667,7 +667,7 @@ static struct {
   int32_t busy_cycles;
 #endif
 } stat;
-int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
+int16_t rx_buffer[MIN_FFT_LEN*4];
 
 #ifdef ENABLED_DUMP
 int16_t dump_buffer[AUDIO_BUFFER_LEN];
@@ -702,7 +702,8 @@ duplicate_buffer_to_dump(int16_t *p)
 }
 #endif
 
-int16_t dummy_capture[AUDIO_BUFFER_LEN*2];
+#if 0
+int16_t dummy_capture[MIN_FFT_LEN*4];
 void fill_dummy(void) {
   for (int i=0;i<AUDIO_BUFFER_LEN;i++) {
     dummy_capture[i*2+0] = (int)(sin(((float) i)/2.0)*10000);
@@ -713,6 +714,7 @@ void fill_dummy(void) {
     dummy_capture[i*2+1] += (int)(cos(((float) i)*2.0)*100);
   }
 }
+#endif
 
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
@@ -750,7 +752,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 static const I2SConfig i2sconfig = {
   NULL, // TX Buffer
   rx_buffer, // RX Buffer
-  AUDIO_BUFFER_LEN*2,
+  MIN_FFT_LEN*4,
   NULL, // tx callback
   i2s_end_callback, // rx callback
   0, // i2scfgr
@@ -786,7 +788,7 @@ VNA_SHELL_FUNCTION(cmd_dump)
 
   wait_dsp(3);
 
-  len = AUDIO_BUFFER_LEN;
+  len = MIN_FFT_LEN*2;
   if (dump_selection == 1 || dump_selection == 2)
     len /= 2;
   for (i = 0; i < len; ) {
@@ -2087,7 +2089,6 @@ VNA_SHELL_FUNCTION(cmd_test)
   }
 }
 
-#ifdef __VNA__
 VNA_SHELL_FUNCTION(cmd_gain)
 {
   int rvalue;
@@ -2102,6 +2103,7 @@ VNA_SHELL_FUNCTION(cmd_gain)
   tlv320aic3204_set_gain(lvalue, rvalue);
 }
 
+#ifdef __VNA__
 VNA_SHELL_FUNCTION(cmd_port)
 {
   int port;
@@ -2319,10 +2321,10 @@ static const VNAShellCommand commands[] =
     {"dump"        , cmd_dump        , 0},
 #endif
     {"frequencies" , cmd_frequencies , 0},
+    {"gain"        , cmd_gain        , 0},
 #ifdef __VNA__
     {"port"        , cmd_port        , 0},
     {"stat"        , cmd_stat        , 0},
-    {"gain"        , cmd_gain        , 0},
     {"power"       , cmd_power       , 0},
     {"sample"      , cmd_sample      , 0},
 #endif
@@ -2371,7 +2373,9 @@ static const VNAShellCommand commands[] =
     { "modulation", cmd_modulation,    0 },
     { "rbw", cmd_rbw,    0 },
     { "mode", cmd_mode,    0 },
+#ifdef __SPUR__
     { "spur", cmd_spur,    0 },
+#endif
     { "load", cmd_load,    0 },
     { "output", cmd_output,    0 },
     { "deviceid", cmd_deviceid,    0 },
@@ -2777,7 +2781,7 @@ goto again;
 #endif
   tlv320aic3204_select(0);      // Reflection port
 //  fill_dummy();
-  dsp_init();
+  dsp_init(32);
   wait_count = 1;
 #endif
   area_height = AREA_HEIGHT_NORMAL;

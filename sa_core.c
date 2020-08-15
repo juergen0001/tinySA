@@ -39,8 +39,10 @@ uint32_t frequencies[POINTS_COUNT];
 
 uint16_t actual_rbw_x10 = 0;
 int vbwSteps = 1;
+int FFT_steps = 1;
+int FFT_step = 0;
 uint32_t minFreq = 0;
-uint32_t maxFreq = 520000000;
+uint32_t maxFreq = 420000000UL;
 
 //int setting.refer = -1;  // Off by default
 static const int reffer_freq[] = {30000000, 15000000, 10000000, 4000000, 3000000, 2000000, 1000000};
@@ -116,7 +118,7 @@ void reset_settings(int m)
   switch(m) {
   case M_LOW:
     minFreq = 0;
-    maxFreq = 2000000000;
+    maxFreq = 4200000000UL;
     set_sweep_frequency(ST_START, (uint32_t) 0);
     set_sweep_frequency(ST_STOP, (uint32_t) 350000000);
 
@@ -152,8 +154,8 @@ void reset_settings(int m)
     minFreq = 00000000;
     maxFreq = 2000000000;
 #else
-    minFreq = 24*setting_frequency_10mhz;
-    maxFreq = 210*setting_frequency_10mhz;       // --------- FFT test -------------
+    minFreq = 200000000;
+    maxFreq = 2100000000;       // --------- FFT test -------------
 #endif
     set_sweep_frequency(ST_START, minFreq);
     set_sweep_frequency(ST_STOP,  maxFreq);
@@ -1188,17 +1190,30 @@ void update_rbw(void)           // calculate the actual_rbw and the vbwSteps (# 
       else
         actual_rbw_x10 = 4*setting.vbw_x10; // rbw is four the frequency step to ensure no gaps in coverage as there are some weird jumps
     } else
-      actual_rbw_x10 = 2*setting.vbw_x10; // rbw is twice the frequency step to ensure no gaps in coverage
+      actual_rbw_x10 = setting.vbw_x10; // rbw is twice the frequency step to ensure no gaps in coverage
   }
-  if (actual_rbw_x10 < 26)
-    actual_rbw_x10 = 26;
-  if (actual_rbw_x10 > 10000)   // x 0.1kHz
-    actual_rbw_x10 = 10000;
-//  actual_rbw_x10 = 6000;
+  if (actual_rbw_x10 * 100 < (sample_rate / MAX_FFT_LEN))
+    actual_rbw_x10 = (sample_rate / MAX_FFT_LEN) / 100;
+  if (actual_rbw_x10*100 > (sample_rate / MIN_FFT_LEN))
+    actual_rbw_x10 = (sample_rate / MIN_FFT_LEN) / 100;
 
+  int fft_l = MIN_FFT_LEN;
+  while (fft_l < MAX_FFT_LEN && actual_rbw_x10 < sample_rate / fft_l / 100 )
+    fft_l *= 2;
+  dsp_init(fft_l);
+
+  if (setting.frequency_step > 0) {
+    if (setting.frequency_step > sample_rate /2)
+      FFT_steps = 1;              // One fft per frequency step
+    else
+      FFT_steps = sample_rate  / setting.frequency_step;
+    if (FFT_steps > fft_l)
+      FFT_steps = fft_l;
+  }
+#ifdef __SPUR__
   if (setting.spur && actual_rbw_x10 > 3000)
     actual_rbw_x10 = 2500;           // if spur suppression reduce max rbw to fit within BPF
-
+#endif
   //SI4432_Sel =  MODE_SELECT(setting.mode);
   //actual_rbw_x10 = SI4432_SET_RBW(actual_rbw_x10);  // see what rbw the SI4432 can realize
 
@@ -1206,11 +1221,12 @@ void update_rbw(void)           // calculate the actual_rbw and the vbwSteps (# 
     vbwSteps = ((int)(2 * (setting.vbw_x10 + (actual_rbw_x10/2)) / actual_rbw_x10)); // calculate # steps in between each frequency step due to rbw being less than frequency step
     if (setting.step_delay_mode==SD_PRECISE)    // if in Precise scanning
       vbwSteps *= 2;                            // use twice as many steps
-    if (vbwSteps < 1)                            // at least one step
+    if (vbwSteps < 1 || FFT_steps > 1)                            // at least one step
       vbwSteps = 1;
   } else {                      // in all other modes
     setting.vbw_x10 = actual_rbw_x10;
     vbwSteps = 1;               // only one vbwSteps
+    FFT_steps = 1;
   }
 }
 
@@ -1550,11 +1566,20 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
       lf += offs;
     }
 
+    if (FFT_steps > 1) {
+      if (FFT_step >= FFT_steps)
+        FFT_step = 0;
+      if (FFT_step==0) {
+        lf += sample_rate/ 2;                           // shift up half the FFT width
+      } else
+        goto skip_LO_setting;                            // No more LO changes required, save some time and jump over the code
+    }
+
     // --------------- Set all the LO's ------------------------
     if (/* MODE_INPUT(setting.mode) && */ i > 0 && FREQ_IS_CW())              // In input mode in zero span mode after first setting of the LO's
       goto skip_LO_setting;                                             // No more LO changes required, save some time and jump over the code
 
-    long local_IF;
+    uint32_t local_IF;
 
  again:                                                              // Spur reduction jumps to here for second measurement
 
@@ -1633,10 +1658,16 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
        set_freq (3, IF_2 - 433800000);          // Down from IF2 to fixed second IF in Ultra SA mode
        set_freq (SI4432_LO, 433800000);                 // Second IF fixe in Ultra SA mode
 #else
-       if (setting.mode == M_LOW && !setting.tracking && S_STATE(setting.below_IF)) // if in low input mode and below IF
-         set_freq (ADF4351_LO, local_IF-lf);                                                 // set LO SI4432 to below IF frequency
-       else
-         set_freq (ADF4351_LO, local_IF+lf);                                                 // otherwise to above IF
+       if (setting.mode == M_LOW) {
+         if (!setting.tracking && S_STATE(setting.below_IF)) { // if in low input mode and below IF
+           if (lf > local_IF)
+             set_freq (ADF4351_LO, lf - local_IF); // set LO SI4432 to below IF frequency
+           else
+             set_freq (ADF4351_LO, local_IF-lf); // set LO SI4432 to below IF frequency
+         } else
+           set_freq (ADF4351_LO, local_IF+lf); // otherwise to above IF
+       } else
+         set_freq (RDA5815_RX , lf);
        wait_count = 2;     //restart
 
 #endif
@@ -1674,6 +1705,7 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
     //    if ( i < 3)
     //      shell_printf("%d %.3f %.3f %.1f\r\n", i, local_IF/1000000.0, lf/1000000.0, subRSSI);
 
+#ifdef __TRIGGER__
     // ************** trigger mode if need
 // trigger on measure 4 point
 #define T_POINTS            4
@@ -1726,8 +1758,13 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
       start_of_sweep_timestamp = chVTGetSystemTimeX();
     }
     else
-//      pureRSSI = SI4432_RSSI(lf, MODE_SELECT(setting.mode));            // Get RSSI, either from pre-filled buffer
-      pureRSSI = float_TO_PURE_RSSI(dsp_getmax());
+#endif
+      //      pureRSSI = SI4432_RSSI(lf, MODE_SELECT(setting.mode));            // Get RSSI, either from pre-filled buffer
+      pureRSSI = float_TO_PURE_RSSI(dsp_getmax(FFT_steps, FFT_step));
+    if(FFT_steps > 1)
+      FFT_step++;
+    if(FFT_step >= FFT_steps)
+      FFT_step = 0;
 
 #ifdef __SPUR__
     static pureRSSI_t spur_RSSI = -1;                               // Initialization only to avoid warning.
@@ -1816,7 +1853,7 @@ if (dirty ) {                                                        // if first
 #endif
 #endif
 //----------------- end FFT test
-
+  FFT_step = 0;
   // ------------------------- start sweep loop -----------------------------------
   for (int i = 0; i < sweep_points; i++) {
     // --------------------- measure -------------------------

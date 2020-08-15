@@ -37,7 +37,8 @@
 #define __AUDIO__
 //#define __ULTRA__             // Add harmonics mode on low input.
 //#define __ULTRA_SA__            // Adds ADF4351 control for extra high 1st IF stage
-#define __SPUR__                // Does spur reduction by shifting IF
+//#define __SPUR__                // Does spur reduction by shifting IF
+//#define __TRIGGER__
 #define __ENABLE_CLK2__
 #define __TLV__               // If disabled us F303 ADC's
 #define __FLOAT_FFT__
@@ -245,9 +246,12 @@ void sweep_remote(void);
  */
 // 256 stereo samples per DSP
 #define AUDIO_BUFFER_LEN 64       // tested from 16 to 512, must be power of 2
-#define FFT_BUFFER_LEN 512       // In samples, FFT size is div 2 // tested from 16 to 4096, must be power of 2
+#define MAX_FFT_LEN 1024       // In samples, FFT size is div 2 // tested from 16 to 4096, must be power of 2
+#define MIN_FFT_LEN 16
+extern int fft_len;
+extern int sample_rate;
 
-extern int16_t rx_buffer[AUDIO_BUFFER_LEN*2]; //
+extern int16_t rx_buffer[MIN_FFT_LEN*4]; //
 
 #define STATE_LEN 32
 #define SAMPLE_LEN 48
@@ -258,18 +262,18 @@ extern int16_t samp_buf[];
 #endif
 #endif
 void dsp_process(int16_t *src, size_t len);
-void dsp_init(void);
+void dsp_init(int len);
 void dsp_fill(void);
-float dsp_getmax(void);
+float dsp_getmax(int fft_steps, int fft_step);
 void set_audio_level(int);
 #define MAX_INT16   32767
 #ifdef __FLOAT_FFT__
 void FFT(float data[], int m, bool forward);
-extern float data[FFT_BUFFER_LEN];
+extern float data[MAX_FFT_LEN*2];
 #endif
 
 #ifdef __INT_FFT__
-extern int16_t data[FFT_BUFFER_LEN];
+extern int16_t data[MAX_FFT_LEN*2];
 #endif
 extern volatile uint8_t wait_count;
 #ifdef __VNA__

@@ -28,17 +28,18 @@ int16_t ref_buf[SAMPLE_LEN];
 
 #ifdef __FLOAT_FFT__
 void FFT(float data[], int m, bool forward);
-float data[FFT_BUFFER_LEN];
-float window[FFT_BUFFER_LEN/4];
+float data[MAX_FFT_LEN*2];
+float window[MAX_FFT_LEN/2];
 #endif
 
 #ifdef __INT_FFT__
 static int fix_fft(short fr[], short fi[], short m, short inverse);
-int16_t data[FFT_BUFFER_LEN];
-int16_t window[FFT_BUFFER_LEN/4];
+int16_t data[MAX_FFT_LEN*2];
+int16_t window[MAX_FFT_LEN/2];
 #endif
 
 int fft_len_div_2;
+int fft_len;
 int fft_fill = 0;
 int fft_bits = 1;
 static int16_t *l_c;
@@ -65,7 +66,7 @@ float current_max = 0;
 
 volatile int32_t ph1,ph2,ph3;
 #define LENGTH ((1<<15) - 1)
-volatile float c1,c2;
+volatile float c1=0,c2=0.97;
 int32_t aizero, arzero;
 
 void calculate_correlation(void)
@@ -75,7 +76,7 @@ void calculate_correlation(void)
   ph2 = 0;
   ph3 = 0;
 
-  for (int i = 0; i < FFT_BUFFER_LEN/2; i++)
+  for (int i = 0; i < fft_len; i++)
   {
     int k = i*2;
     int s_i = data[k],
@@ -98,7 +99,7 @@ void calculate_correlation(void)
 
     int16_t w = i;       // calculate index in window
     if (w >= fft_len_div_2)
-      w = FFT_BUFFER_LEN/2 - 1 - w;
+      w = fft_len - 1 - w;
 
     data[k] = s_i * window[w] * c2;     // Window and I/Q balance compensate
     data[k+1] = s_q * window[w];
@@ -106,8 +107,10 @@ void calculate_correlation(void)
 
   int aver;
   if (ph2 > 100000) {
-    if (c2 == 0.0) aver = 0; else aver = 40;
+    if (c2 == 1.0) aver = 0; else aver = 40;
     c1 = ((c1 * aver) + (float)ph1/(float)ph2 ) / (aver + 1);
+    if (c2 < 0.9) c2 = 0.9;
+    if (c2 > 1.1) c2 = 1.1;
     c2 = ((c2 * aver) + sqrt(((float)ph3*ph3 - (float)ph1*ph1)/((float)ph2*ph2)) ) / (aver+1);
     SHOW(c1,0);
     SHOW(c2,1);
@@ -165,7 +168,7 @@ void dsp_process(int16_t *capture, size_t length)   // 2 samples per fft point
     if (s_max < s)
       s_max = s;
   }
-  if (fft_fill < FFT_BUFFER_LEN)
+  if (fft_fill < fft_len*2)
     wait_count++;           // Get one more buffer
   else
     fft_fill = 0;
@@ -199,21 +202,21 @@ void dsp_fill(void)
 
 float dsp_get(int fi)
 {
-  int samples = ((FFT_BUFFER_LEN/2) / 256);
+  int samples = ((fft_len) / 256);
   if (samples < 1)
     samples = 1;
 
-  if (FFT_BUFFER_LEN/2 > 256)           // subsample
+  if (fft_len > 256)           // subsample
     fi = fi * samples;
 
-  if (fi > FFT_BUFFER_LEN/2)            // no more data
+  if (fi > fft_len)            // no more data
     return -150.0;
 
-  if (fi < FFT_BUFFER_LEN/4)
-    fi = fi + FFT_BUFFER_LEN/4;
+  if (fi < fft_len/2)
+    fi = fi + fft_len/2;
   else
-    fi = fi - FFT_BUFFER_LEN/4 + 1;
-//  fi = FFT_BUFFER_LEN/2 - fi;     // Invert frequencies due to I/Q phase error
+    fi = fi - fft_len/2 + 1;
+//  fi = fft_len - fi;     // Invert frequencies due to I/Q phase error
 
   float sub_data,max_data = 0;
   while (samples --) {
@@ -221,7 +224,7 @@ float dsp_get(int fi)
     sub_data = data[2*fi]*data[2*fi] + data[2*fi+1]*data[2*fi+1];         // dBm
 #endif
 #ifdef __INT_FFT__
-  sub_data = data[fi]*data[fi] + data[fi+FFT_BUFFER_LEN/2]*data[fi+FFT_BUFFER_LEN/2];         // dBm
+  sub_data = data[fi]*data[fi] + data[fi+fft_len]*data[fi+fft_len];         // dBm
 #endif
     if (max_data < sub_data)
       max_data = sub_data;
@@ -230,25 +233,53 @@ float dsp_get(int fi)
   return max_data;
 }
 
-float dsp_getmax(void) {
+float dsp_get_one(int fi)
+{
+  if (fi > fft_len)            // no more data
+    return -150.0;
+
+  if (fi < fft_len/2)
+    fi = fi + fft_len/2;
+  else
+    fi = fi - fft_len/2 + 1;
+//  fi = fft_len - fi;     // Invert frequencies due to I/Q phase error
+
+#ifdef __FLOAT_FFT__
+  return data[2*fi]*data[2*fi] + data[2*fi+1]*data[2*fi+1];         // dBm
+#endif
+#ifdef __INT_FFT__
+  return data[fi]*data[fi] + data[fi+fft_len]*data[fi+fft_len];         // dBm
+#endif
+}
+
+
+float dsp_getmax(int fft_steps, int fft_step) {
   float maxdata = 0;
   if (dsp_filled) {
-    if (dsp_index == FFT_BUFFER_LEN/2 - 1)
+    if (dsp_index == fft_len - 1)
       dsp_filled = false;
     if (audio_level)
-      return data[2*(dsp_index++) + (audio_level & 1)] / audio_level; // Get the raw audio signal left or right channel
+      return data[2*(dsp_index++) + (audio_level & 1)] / (audio_level/2); // Get the raw audio signal left or right channel
     maxdata = dsp_get(dsp_index++);
   } else {
-    if (wait_count == 0)
-      return -150;
-    while (wait_count) __WFI();
-    maxdata = s_max*s_max;
+    if (fft_step == 0) {
+      wait_count = 2;
+      while (wait_count) __WFI();
+      calculate_correlation();
+    }
+    float submax;
+    int fft_bucket = fft_len / fft_steps;
+    for (int i = 0; i < fft_bucket; i++) {
+      submax = dsp_get_one(fft_step * fft_bucket + i);
+      if (maxdata < submax)
+        maxdata = submax;
+    }
   }
 #if 1
 #else
   calculate_correlation();
 #define IGNORE  10
-  for (int i=IGNORE; i < FFT_BUFFER_LEN/2 - IGNORE; i++) {
+  for (int i=IGNORE; i < fft_len - IGNORE; i++) {
     float sub_data = dsp_get(i);
     if (maxdata < sub_data)
       maxdata = sub_data;
@@ -264,20 +295,27 @@ float dsp_getmax(void) {
   return RSSI;
 }
 
-void dsp_init(void) {
-  for (int i = 0; i < FFT_BUFFER_LEN/4; i++) {
+void dsp_init(int len) {
+  if (len < MIN_FFT_LEN)
+    len = MIN_FFT_LEN;
+  if (len > MAX_FFT_LEN)
+    len = MAX_FFT_LEN;
+  if (fft_len == len)
+    return;
+  fft_len = len;
+  for (int i = 0; i < fft_len/2; i++) {
 //#define PI  3.14159265358979
 #define A 0.16
-#define WINDOW(n) ((1.0-A)/2 - 0.5 * cos((2.0*PI*n)/(FFT_BUFFER_LEN/2-1)) + (A/2.0)*cos((4*PI*n)/(FFT_BUFFER_LEN/2-1)))
+#define WINDOW(n) ((1.0-A)/2 - 0.5 * cos((2.0*PI*n)/(fft_len-1)) + (A/2.0)*cos((4*PI*n)/(fft_len-1)))
 #ifdef __FLOAT_FFT__
     window[i] = WINDOW(i);
 #else
     window[i] = (int16_t) (MAX_INT16 * WINDOW(i));
 #endif
   }
-  fft_len_div_2 = FFT_BUFFER_LEN / 4;
+  fft_len_div_2 = fft_len/2;
   fft_bits = 1;
-  while (1<<fft_bits < FFT_BUFFER_LEN / 2)
+  while (1<<fft_bits < fft_len)
     fft_bits++;
 
 }
