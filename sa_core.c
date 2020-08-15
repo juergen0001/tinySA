@@ -1209,7 +1209,12 @@ void update_rbw(void)           // calculate the actual_rbw and the vbwSteps (# 
       FFT_steps = sample_rate  / setting.frequency_step;
     if (FFT_steps > fft_l)
       FFT_steps = fft_l;
+  } else {
+    fft_l = 256;
+    dsp_init(fft_l);
+    FFT_steps = fft_l;
   }
+
 #ifdef __SPUR__
   if (setting.spur && actual_rbw_x10 > 3000)
     actual_rbw_x10 = 2500;           // if spur suppression reduce max rbw to fit within BPF
