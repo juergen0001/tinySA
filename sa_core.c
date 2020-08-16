@@ -1223,10 +1223,11 @@ void update_rbw(void)           // calculate the actual_rbw and the vbwSteps (# 
   //actual_rbw_x10 = SI4432_SET_RBW(actual_rbw_x10);  // see what rbw the SI4432 can realize
 
   if (setting.frequency_step > 0 && MODE_INPUT(setting.mode)) { // When doing frequency scanning in input mode
-    vbwSteps = ((int)(2 * (setting.vbw_x10 + (actual_rbw_x10/2)) / actual_rbw_x10)); // calculate # steps in between each frequency step due to rbw being less than frequency step
+    //    vbwSteps = ((int)(2 * (setting.vbw_x10 + (actual_rbw_x10/2)) / actual_rbw_x10)); // calculate # steps in between each frequency step due to rbw being less than frequency step
+    vbwSteps = ((int)((setting.vbw_x10 + sample_rate/100) / (sample_rate/100))); // calculate # steps in between each frequency step due to rbw being less than frequency step
     if (setting.step_delay_mode==SD_PRECISE)    // if in Precise scanning
       vbwSteps *= 2;                            // use twice as many steps
-    if (vbwSteps < 1 || FFT_steps > 1)                            // at least one step
+    if (vbwSteps < 1)                            // at least one step
       vbwSteps = 1;
   } else {                      // in all other modes
     setting.vbw_x10 = actual_rbw_x10;

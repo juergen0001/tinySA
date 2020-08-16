@@ -41,10 +41,10 @@ static const uint8_t conf_data_pll[] = {
 #else
   #ifdef REFCLK_8000KHZ
   // MCLK = 8.000MHz * 12.2880 = 98.304MHz,
-  2, 0x04, 0x03,           // PLL Clock Low (80MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
+  2, 0x04, 0x43,           // D!=0, so PLL Clock High (92MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
   2, 0x05, 0x91,           // Power up PLL, P=1,R=1
-  2, 0x06, 12,             // J=10
-  2, 0x07, (2880>>8)&0xFF, // D=7520 = 0x1D60
+  2, 0x06, 12,             // J=12
+  2, 0x07, (2880>>8)&0xFF, // D=2880
   2, 0x08, (2880>>0)&0xFF,
 #endif
 #endif
@@ -77,14 +77,14 @@ static const uint8_t conf_48k_data_clk[] = {
  // Clock config, default fs=48kHz
   // from PLL 98.304MHz/(2*8*128) = 48kHz
   2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
-  2, 0x0c, 0x88,     // Power up the MDAC divider with value 7
+  2, 0x0c, 0x88,     // Power up the MDAC divider with value 8
   2, 0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 128
   2, 0x0e, 0x80,     // DAC OSR Setting Register 2 (LSB)
   2, 0x3c, 0x01,     // Set the DAC Mode to PRB_P1
   2, 0x25, 0x00,     // DAC power down
 // ADC output sample rate depend from DAC, but internal use this settings
-  2, 0x12, 0x81,     // Power up the NADC divider with value 1
-  2, 0x13, 0x88,     // Power up the MADC divider with value 7
+  2, 0x12, 0x81,     // Power up the NADC divider with value 2
+  2, 0x13, 0x88,     // Power up the MADC divider with value 8
   2, 0x14, 0x80,     // ADC Oversampling (AOSR) Program the OSR of ADC to 128
   2, 0x3d, 0x01,     // Select ADC PRB_R1
   2, 0x24, 0xee,     // ADC power up
@@ -146,10 +146,16 @@ static const uint8_t conf_192k_data_clk[] =
   2, 0x25, 0x00,     // DAC power down
 // ADC output sample rate depend from DAC, but internal use this settings
   2, 0x12, 0x82,     // Power up the NADC divider with value 2
+#if 1
   2, 0x13, 0x84,     // Power up the MADC divider with value 8
   2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 32
   2, 0x3d,    7,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
 //  0x3d, 0x07,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
+#else
+  2, 0x13, 0x88,     // Power up the MADC divider with value 8
+  2, 0x14, 0x20,     // ADC Oversampling (AOSR) set OSR of ADC to 32
+  2, 0x3d,    7,     // Select ADC PRB_R7
+#endif
   2, 0x24, 0xee,     // ADC power up
 
   2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
@@ -164,14 +170,14 @@ static const uint8_t conf_384k_data_clk[] = {
 // from PLL 98.304MHz/(2*4*32) = 384kHz
 // DAC setting, need only for set ADC sample rate output
   2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
-  2, 0x0c, 0x84,     // Power up the MDAC divider with value 8
+  2, 0x0c, 0x84,     // Power up the MDAC divider with value 4
   2, 0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 32
 #if 0
   2, 0x0e, 0x40,     // DAC OSR Setting Register 2 (LSB)
 #else
   2, 0x0e, 0x20,     // DAC OSR Setting Register 2 (LSB)
 #endif
-  2, 0x3c,   17,     // Set the DAC Mode to PRB_P1
+  2, 0x3c,   17,     // Set the DAC Mode to PRB_P17
   2, 0x25, 0x00,     // DAC power down
 // ADC output sample rate depend from DAC, but internal use this settings
 #if 0
@@ -182,10 +188,9 @@ static const uint8_t conf_384k_data_clk[] = {
   2, 0x24, 0xee,     // ADC power up
 #else
   2, 0x12, 0x82,     // Power up the NADC divider with value 2
-  2, 0x13, 0x82,     // Power up the MADC divider with value 4
-  2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 128
-  2, 0x3d,    7,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
-//  0x3d, 0x07,      // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
+  2, 0x13, 0x82,     // Power up the MADC divider with value 2
+  2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 64
+  2, 0x3d,    7,     // Select ADC PRB_R7
   2, 0x24, 0xee,     // ADC power up
 #endif
   2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
@@ -200,16 +205,16 @@ static const uint8_t conf_768k_data_clk[] = {
 // from PLL 98.304MHz/(2*4*16) = 768kHz
 // DAC setting, need only for set ADC sample rate output
   2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
-  2, 0x0c, 0x82,     // Power up the MDAC divider with value 8
+  2, 0x0c, 0x82,     // Power up the MDAC divider with value 2
   2, 0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 16
   2, 0x0e, 0x20,     // DAC OSR Setting Register 2 (LSB)
-  2, 0x3c,   17,     // Set the DAC Mode to PRB_P1
+  2, 0x3c,   17,     // Set the DAC Mode to PRB_P17
   2, 0x25, 0x00,     // DAC power down
 // ADC output sample rate depend from DAC, but internal use this settings
   2, 0x12, 0x82,     // Power up the NADC divider with value 2
-  2, 0x13, 0x82,     // Power up the MADC divider with value 4
-  2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 128
-  2, 0x3d,    7,     // Select ADC PRB_R13 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
+  2, 0x13, 0x82,     // Power up the MADC divider with value 2
+  2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 64
+  2, 0x3d,    7,     // Select ADC PRB_R7
   2, 0x24, 0xee,     // ADC power up
 
   2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
