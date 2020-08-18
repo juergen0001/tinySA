@@ -31,7 +31,7 @@ static const uint8_t conf_data_pll[] = {
   // len, ( reg, data ), 
   2, 0x00, 0x00, /* Initialize to Page 0 */
   2, 0x01, 0x01, /* Initialize the device through software reset */
-#if 1
+#if 0
   // MCLK = 8.000MHz * 12.800 =  102.400MHz
   2, 0x04, 0x43,           // PLL Clock High (92MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
   2, 0x05, 0x91,           // Power up PLL, P=1,R=1
@@ -146,7 +146,7 @@ static const uint8_t conf_192k_data_clk[] =
   2, 0x25, 0x00,     // DAC power down
 // ADC output sample rate depend from DAC, but internal use this settings
   2, 0x12, 0x82,     // Power up the NADC divider with value 2
-#if 1
+#if 0
   2, 0x13, 0x84,     // Power up the MADC divider with value 8
   2, 0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 32
   2, 0x3d,    7,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
@@ -287,9 +287,9 @@ void tlv320aic3204_init(void)
 {
   tlv320aic3204_config(conf_data_pll);
 //  tlv320aic3204_config(conf_48k_data_clk);  sample_rate = 5000; // new 48k
-//  tlv320aic3204_config(conf_96k_data_clk);  sample_rate = 100000; //  96k
-//  tlv320aic3204_config(conf_192k_data_clk);  sample_rate = 200000;  // 192k
-  tlv320aic3204_config(conf_384k_data_clk); sample_rate = 400000; //  384k
+//  tlv320aic3204_config(conf_96k_data_clk);  sample_rate = 96000; //  96k
+  tlv320aic3204_config(conf_192k_data_clk);  sample_rate = 192000;  // 192k
+//  tlv320aic3204_config(conf_384k_data_clk); sample_rate = 384000; //  384k
 //  tlv320aic3204_config(conf_768k_data_clk);  sample_rate = 800000;  // 768k
   tlv320aic3204_config(conf_data_routing);
   wait_ms(40);

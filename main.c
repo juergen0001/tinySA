@@ -2772,7 +2772,7 @@ goto again;
  * I2S Initialize
  */
   tlv320aic3204_init();
-  tlv320aic3204_set_gain(1, 1);
+  tlv320aic3204_set_gain(10, 10);
   i2sInit();
   i2sObjectInit(&I2SD2);
 #ifdef __TLV__
@@ -2782,7 +2782,7 @@ goto again;
   tlv320aic3204_select(0);      // Reflection port
 //  fill_dummy();
   dsp_init(32);
-  wait_count = 1;
+  wait_count = 2;
 #endif
   area_height = AREA_HEIGHT_NORMAL;
   ui_init();
@@ -2803,6 +2803,7 @@ goto again;
   set_sweep_frequency(ST_STOP, (uint32_t) 4000000);
   sweep(false);
 #endif
+  set_sweep_frequency(ST_START, (uint32_t) 0);
   set_sweep_frequency(ST_STOP, (uint32_t) 20000000);
 
 

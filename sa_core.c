@@ -1576,7 +1576,7 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
       if (FFT_step >= FFT_steps)
         FFT_step = 0;
       if (FFT_step==0) {
-        lf += sample_rate/ 2;                           // shift up half the FFT width
+        lf += sample_rate/2;                           // shift up half the FFT width
       } else
         goto skip_LO_setting;                            // No more LO changes required, save some time and jump over the code
     }
@@ -1674,7 +1674,7 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
            set_freq (ADF4351_LO, local_IF+lf); // otherwise to above IF
        } else
          set_freq (RDA5815_RX , lf);
-       wait_count = 2;     //restart
+//       wait_count = 2;     //restart  no pipeline for now
 
 #endif
     }
@@ -1863,9 +1863,9 @@ if (dirty ) {                                                        // if first
   // ------------------------- start sweep loop -----------------------------------
   for (int i = 0; i < sweep_points; i++) {
     // --------------------- measure -------------------------
-START_PROFILE
+//START_PROFILE
     RSSI = PURE_TO_float(perform(break_on_operation, i, frequencies[i], setting.tracking));    // Measure RSSI for one of the frequencies
-STOP_PROFILE
+//STOP_PROFILE
 
     // ----------------- FFT test --------------------------
 #if 0

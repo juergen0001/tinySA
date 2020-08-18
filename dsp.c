@@ -112,8 +112,8 @@ void calculate_correlation(void)
     if (c2 < 0.9) c2 = 0.9;
     if (c2 > 1.1) c2 = 1.1;
     c2 = ((c2 * aver) + sqrt(((float)ph3*ph3 - (float)ph1*ph1)/((float)ph2*ph2)) ) / (aver+1);
-    SHOW(c1,0);
-    SHOW(c2,1);
+//    SHOW(c1,0);
+//    SHOW(c2,1);
   }
 #ifdef __FLOAT_FFT__                                            // real FFT
   FFT(data, fft_bits, true);
@@ -192,6 +192,7 @@ void set_audio_level(int l)
 
 void dsp_fill(void)
 {
+  wait_count = 3;
   while (wait_count) __WFI();
 
   if (audio_level==0)
@@ -235,7 +236,7 @@ float dsp_get(int fi)
 
 float dsp_get_one(int fi)
 {
-  if (fi > fft_len)            // no more data
+  if (fi > fft_len || fi < 0)            // no more data
     return -150.0;
 
   if (fi < fft_len/2)
@@ -263,17 +264,19 @@ float dsp_getmax(int fft_steps, int fft_step) {
     maxdata = dsp_get(dsp_index++);
   } else {
     if (fft_step == 0) {
-      wait_count = 2;
+      wait_count = 3;
       while (wait_count) __WFI();
       calculate_correlation();
     }
     float submax;
-    int fft_bucket = fft_len / fft_steps;
-    for (int i = 0; i < fft_bucket; i++) {
-      submax = dsp_get_one(fft_step * fft_bucket + i);
+    int fft_bucket = (fft_len + fft_steps - 1) / fft_steps;
+    int i = -fft_bucket/2;
+    do {
+      submax = dsp_get_one((fft_step * fft_len) / fft_steps + i);
       if (maxdata < submax)
         maxdata = submax;
-    }
+      i++;
+    } while (i < fft_bucket/2 );
   }
 #if 1
 #else
@@ -287,7 +290,7 @@ float dsp_getmax(int fft_steps, int fft_step) {
   }
 #endif
 #ifdef __FLOAT_FFT__
-    float RSSI = 10*log10(maxdata) - 30;         // dBm
+    float RSSI = 10*log10(maxdata/(fft_len*fft_len)) - 10;         // dBm
 #endif
 #ifdef __INT_FFT__
     float RSSI = 10*log10(maxdata) - 90;         // dBm
