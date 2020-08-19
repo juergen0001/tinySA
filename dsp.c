@@ -67,7 +67,8 @@ float current_max = 0;
 volatile int32_t ph1,ph2,ph3;
 #define LENGTH ((1<<15) - 1)
 volatile float c1=0,c2=0.97;
-int32_t aizero, arzero;
+//int32_t aizero, arzero;
+float aizero, arzero;
 
 void calculate_correlation(void)
 {
@@ -76,11 +77,22 @@ void calculate_correlation(void)
   ph2 = 0;
   ph3 = 0;
 
+  arzero = 0;
+  aizero = 0;
   for (int i = 0; i < fft_len; i++)
   {
     int k = i*2;
-    int s_i = data[k],
-        s_q = data[k+1];
+    aizero += data[k];
+    arzero += data[k+1];
+  }
+  aizero /= fft_len;
+  arzero /= fft_len;
+
+  for (int i = 0; i < fft_len; i++)
+  {
+    int k = i*2;
+    float s_i = data[k] - aizero,
+          s_q = data[k+1] - arzero;
 
 //    ph1 +=  - sign(i) * s_q;
 //    ph2 += sign(i) * s_i;
@@ -139,43 +151,43 @@ void calculate_correlation(void)
 
 
 volatile float rsum = 0, isum = 0;
-volatile int32_t s_max;
+//volatile int32_t s_max;
 
 void dsp_process(int16_t *capture, size_t length)   // 2 samples per fft point
 {
   int len_div_2 = length/2;
-  int32_t rzero = 0, izero = 0;
+//  int32_t rzero = 0, izero = 0;
 
   l_c = capture;            // Only to get raw audio
 
-  s_max = 0;
+//  s_max = 0;
   for (int i=0;i<len_div_2;i++) {
     int16_t s;
     s = capture[i*2+0];
-    rzero += s;
-    s -= arzero;
+//    rzero += s;
+//    s -= arzero;
     data[fft_fill++] = (float)s;
-    if (s < 0)
-      s = -s;
-    if (s_max < s)
-      s_max = s;
+//    if (s < 0)
+//      s = -s;
+//    if (s_max < s)
+//      s_max = s;
     s = capture[i*2+1];
-    izero += s;
-    s -= aizero;
+//    izero += s;
+//    s -= aizero;
     data[fft_fill++] = (float)s;
-    if (s < 0)
-      s = -s;
-    if (s_max < s)
-      s_max = s;
+//    if (s < 0)
+//      s = -s;
+//    if (s_max < s)
+//      s_max = s;
   }
   if (fft_fill < fft_len*2)
     wait_count++;           // Get one more buffer
   else
     fft_fill = 0;
 
-#define AVER_ZERO  20
-  arzero = rzero/len_div_2; //(arzero * AVER_ZERO * len_div_2 + rzero)/(AVER_ZERO+1)/len_div_2;
-  aizero = izero/len_div_2; //(aizero * AVER_ZERO * len_div_2 + izero)/(AVER_ZERO+1)/len_div_2;
+#define AVER_ZERO  100
+//  arzero = (arzero * AVER_ZERO * len_div_2 + rzero)/(AVER_ZERO+1)/len_div_2;
+//  aizero = (aizero * AVER_ZERO * len_div_2 + izero)/(AVER_ZERO+1)/len_div_2;
 }
 
 

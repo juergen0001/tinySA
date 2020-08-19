@@ -31,13 +31,13 @@ static const uint8_t conf_data_pll[] = {
   // len, ( reg, data ), 
   2, 0x00, 0x00, /* Initialize to Page 0 */
   2, 0x01, 0x01, /* Initialize the device through software reset */
-#if 0
-  // MCLK = 8.000MHz * 12.800 =  102.400MHz
-  2, 0x04, 0x43,           // PLL Clock High (92MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
-  2, 0x05, 0x91,           // Power up PLL, P=1,R=1
-  2, 0x06, 12,             //
-  2, 0x07, (800>>8)&0xFF,  //
-  2, 0x08, (800>>0)&0xFF,
+#if 1
+  /* 8.000MHz*10.7520 = 86.016MHz, 86.016MHz/(2*7*128) = 48kHz */
+  2, 0x04, 0x43, /* PLL Clock High, MCLK, PLL */
+  2, 0x05, 0x91, /* Power up PLL, P=1,R=1 */
+  2, 0x06, 0x0a, /* J=10 */
+  2, 0x07, 29,    /* D=7520 = (29<<8) + 96 */
+  2, 0x08, 96,
 #else
   #ifdef REFCLK_8000KHZ
   // MCLK = 8.000MHz * 12.2880 = 98.304MHz,
@@ -95,7 +95,23 @@ static const uint8_t conf_48k_data_clk[] = {
 };
 
 // default fs=96kHz
-static const uint8_t conf_96k_data_clk[] = {
+static const uint8_t conf_96k_data_clk[] =
+{
+#if 1      // edy555 config
+ 2, 0x0b, 0x82, /* Power up the NDAC divider with value 2 */
+ 2, 0x0c, 0x87, /* Power up the MDAC divider with value 7 */
+ 2, 0x0d, 0x00, /* Program the OSR of DAC to 64 */
+ 2, 0x0e, 0x80,
+ 2, 0x3c, 25,   /* Set the DAC Mode to PRB_P8 */
+ 2, 0x1b, 0x0c, /* Set the BCLK,WCLK as output */
+ 2, 0x1e, 0x80 + 28, /* Enable the BCLKN divider with value 14 */
+ 2, 0x25, 0xee, /* DAC power up */
+
+ 2, 0x12, 0x82, /* Power up the NADC divider with value 7 */
+ 2, 0x13, 0x87, /* Power up the MADC divider with value 2 */
+ 2, 0x14, 0x80, /* Program the OSR of ADC to 64 */
+ 2, 0x3d, 0x01, /* Select ADC PRB_R1 */
+ #else
   // Clock config, default fs=96kHz
   // from PLL 98.304MHz/(2*8*64) = 96kHz
   2, 0x0b, 0x82,     // Power up the NDAC divider with value 2
@@ -113,13 +129,14 @@ static const uint8_t conf_96k_data_clk[] = {
 
   2, 0x1b, 0x0c,     // Set the BCLK,WCLK as output
   2, 0x1e, 0x80 + 16,// Enable the BCLKN divider with value 16 (I2S clock = 98.304MHz/(NDAC*16) = 96kHz * (16+16)
+#endif
   0 // sentinel
 };
 
 // default fs=192kHz
 static const uint8_t conf_192k_data_clk[] =
 {
-#if 0
+#if 1       // edy555 config
  2, 0x0b, 0x82, /* Power up the NDAC divider with value 2 */
  2, 0x0c, 0x87, /* Power up the MDAC divider with value 7 */
  2, 0x0d, 0x00, /* Program the OSR of DAC to 32 */
@@ -249,6 +266,8 @@ static const uint8_t conf_data_routing[] = {
 static const uint8_t conf_data_unmute[] = {
   2, 0x00, 0x00, /* Select Page 0 */
   2, 0x51, 0xc2, /* Power up Left and Right ADC Channels, ADC Volume Control Soft-Stepping disabled */
+  2, 0x56, 0,
+  2, 0x5e, 0,
   2, 0x52, 0x00, /* Unmute Left and Right ADC Digital Volume Control */    
   0 // sentinel
 };
@@ -258,6 +277,15 @@ static void tlv320aic3204_bulk_write(const uint8_t *buf, int len)
   int addr = AIC3204_ADDR;
   i2cAcquireBus(&I2CD1);
   (void)i2cMasterTransmitTimeout(&I2CD1, addr, buf, len, NULL, 0, 1000);
+  i2cReleaseBus(&I2CD1);
+}
+
+static void tlv320aic3204_write(uint8_t reg, uint8_t dat)
+{
+  int addr = AIC3204_ADDR;
+  uint8_t buf[] = { reg, dat };
+  i2cAcquireBus(&I2CD1);
+  (void)i2cMasterTransmitTimeout(&I2CD1, addr, buf, 2, NULL, 0, 1000);
   i2cReleaseBus(&I2CD1);
 }
 
@@ -283,6 +311,51 @@ static void tlv320aic3204_config(const uint8_t *data)
   }
 }
 
+void tlv320aic3204_config_adc_filter2(double adj)
+{
+  int reg;
+  int32_t b0 = 0x7ffada00;
+  int32_t b1 = 0x80052600;
+  int32_t a1 = 0x7ff5b500;
+
+  tlv320aic3204_write(0x00, 0x08);
+  reg = 24;
+  tlv320aic3204_write(reg++, b0 >> 24);
+  tlv320aic3204_write(reg++, b0 >> 16);
+  tlv320aic3204_write(reg++, b0 >> 8);
+  tlv320aic3204_write(reg++, 0);
+  tlv320aic3204_write(reg++, b1 >> 24);
+  tlv320aic3204_write(reg++, b1 >> 16);
+  tlv320aic3204_write(reg++, b1 >> 8);
+  tlv320aic3204_write(reg++, 0);
+  tlv320aic3204_write(reg++, a1 >> 24);
+  tlv320aic3204_write(reg++, a1 >> 16);
+  tlv320aic3204_write(reg++, a1 >> 8);
+  tlv320aic3204_write(reg++, 0);
+
+  b0 = (int32_t)(b0 * adj);
+  b1 = (int32_t)(b1 * adj);
+  tlv320aic3204_write(0x00, 0x09);
+  reg = 32;
+  tlv320aic3204_write(reg++, b0 >> 24);
+  tlv320aic3204_write(reg++, b0 >> 16);
+  tlv320aic3204_write(reg++, b0 >> 8);
+  tlv320aic3204_write(reg++, 0);
+  tlv320aic3204_write(reg++, b1 >> 24);
+  tlv320aic3204_write(reg++, b1 >> 16);
+  tlv320aic3204_write(reg++, b1 >> 8);
+  tlv320aic3204_write(reg++, 0);
+  tlv320aic3204_write(reg++, a1 >> 24);
+  tlv320aic3204_write(reg++, a1 >> 16);
+  tlv320aic3204_write(reg++, a1 >> 8);
+  tlv320aic3204_write(reg++, 0);
+
+  tlv320aic3204_write(0x00, 0x08); /* Select Page 8 */
+  tlv320aic3204_write(0x01, 0x05); /* ADC Coefficient Buffers will be switched at next frame boundary */
+  tlv320aic3204_write(0x00, 0x00); /* Back to page 0 */
+}
+
+
 void tlv320aic3204_init(void)
 {
   tlv320aic3204_config(conf_data_pll);
@@ -294,6 +367,7 @@ void tlv320aic3204_init(void)
   tlv320aic3204_config(conf_data_routing);
   wait_ms(40);
   tlv320aic3204_config(conf_data_unmute);
+//  tlv320aic3204_config_adc_filter2(-1);
 }
 
 void tlv320aic3204_select(uint8_t channel)
