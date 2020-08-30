@@ -25,6 +25,8 @@
 #define __USE_DISPLAY_DMA__
 
 #define __SA__
+#define __SI4432__
+#define __PE4302__
 //#define __SIMULATION__
 //#define __PIPELINE__
 #define __SCROLL__
@@ -513,6 +515,7 @@ void marker_position(int m, int t, int *x, int *y);
 int search_nearest_index(int x, int y, int t);
 void set_marker_search(int mode);
 int marker_search(void);
+int marker_search_max(void);
 int marker_search_left(int from);
 int marker_search_right(int from);
 int marker_search_left_max(int from);

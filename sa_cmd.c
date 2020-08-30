@@ -275,7 +275,7 @@ usage:
 VNA_SHELL_FUNCTION(cmd_v)
 {
     if (argc != 1) {
-        shell_printf("%d\r\n", SI4432_Sel);
+        shell_printf("%d\r\n", VFO);
         return;
     }
     VFO = my_atoi(argv[0]) > 0 ? 1 : 0;
@@ -291,6 +291,7 @@ VNA_SHELL_FUNCTION(cmd_y)
     return;
   }
   rvalue = my_atoui(argv[0]);
+#ifdef __SI4432__
   SI4432_Sel = VFO;
   if (argc == 2){
     lvalue = my_atoui(argv[1]);
@@ -299,6 +300,7 @@ VNA_SHELL_FUNCTION(cmd_y)
     lvalue = SI4432_Read_Byte(rvalue);
     shell_printf("%x\r\n", lvalue);
   }
+#endif
 }
 
 VNA_SHELL_FUNCTION(cmd_z)
@@ -371,6 +373,7 @@ VNA_SHELL_FUNCTION(cmd_i)
 {
   int rvalue;
 return;             // Don't use!!!!
+#ifdef __SI4432__
   SI4432_Init();
   shell_printf("SI4432 init done\r\n");
   if (argc == 1) {
@@ -379,6 +382,7 @@ return;             // Don't use!!!!
     set_mode(rvalue);
     shell_printf("SI4432 mode %d set\r\n", rvalue);
   }
+#endif
 }
 
 VNA_SHELL_FUNCTION(cmd_o)

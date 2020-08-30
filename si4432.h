@@ -21,6 +21,9 @@
 #ifndef __SI4432_H__
 
 #define __SI4432_H__
+
+#ifdef __SI4432__
+
 //
 #define MAX_SI4432                         2
 
@@ -104,14 +107,14 @@
 #define SI4432_FIFO                        0x7F
 
 
-typedef uint8_t byte;
 extern volatile int SI4432_Sel;         // currently selected SI4432
+extern int SI4432_step_delay;
+extern int SI4432_offset_delay;
+extern int SI4432_frequency_changed;
+extern int SI4432_offset_changed;
 
-void start_SI4432_SPI_mode(void);
-void stop_SI4432_SPI_mode(void);
-
-void SI4432_Write_Byte(byte ADR, byte DATA );
-byte SI4432_Read_Byte( byte ADR );
+void SI4432_Write_Byte(uint8_t ADR, uint8_t DATA );
+uint8_t SI4432_Read_Byte( uint8_t ADR );
 
 void SI4432_Transmit(int d);
 void SI4432_Receive(void);
@@ -128,16 +131,18 @@ void SI4432_Set_Frequency ( uint32_t Freq );
 uint16_t SI4432_force_RBW(int i);
 uint16_t SI4432_SET_RBW(uint16_t WISH);
 void SI4432_SetReference(int freq);
-
-bool PE4302_Write_Byte(unsigned char DATA );
-void PE4302_init(void);
-
 #ifdef __FAST_SWEEP__
 void SI4432_Fill(int s, int start);
 #if 0
 int SI4432_is_fast_mode(void);
 #endif
 #endif
+
+#endif
+
+
+bool PE4302_Write_Byte(unsigned char DATA );
+void PE4302_init(void);
 
 #ifdef __ULTRA_SA__
 extern int ADF4351_LE[];

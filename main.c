@@ -1619,6 +1619,7 @@ VNA_SHELL_FUNCTION(cmd_cal)
   }
   shell_printf("usage: cal [%s]\r\n", cmd_cal_list);
 }
+#endif
 
 VNA_SHELL_FUNCTION(cmd_save)
 {
@@ -1653,7 +1654,6 @@ VNA_SHELL_FUNCTION(cmd_recall)
  usage:
   shell_printf("recall {id}\r\n");
 }
-#endif
 
 static const struct {
   const char *name;
@@ -1784,7 +1784,7 @@ VNA_SHELL_FUNCTION(cmd_trace)
       set_unit(type);
       goto update;
     }
-    goto usage;
+//    goto usage;
   }
   static const char cmd_store_list[] = "store|clear|subtract";
   if (argc == 1) {
@@ -1802,7 +1802,7 @@ VNA_SHELL_FUNCTION(cmd_trace)
         goto update;
       }
     }
-    goto usage;
+//    goto usage;
   }
   //                                            0      1
   static const char cmd_scale_ref_list[] = "scale|reflevel";
@@ -2307,9 +2307,9 @@ static const VNAShellCommand commands[] =
     {"resume"      , cmd_resume      , 0},
 #ifdef __VNA__
     {"cal"         , cmd_cal         , CMD_WAIT_MUTEX},
+#endif
     {"save"        , cmd_save        , 0},
     {"recall"      , cmd_recall      , CMD_WAIT_MUTEX},
-#endif
     {"trace"       , cmd_trace       , CMD_WAIT_MUTEX},
     {"trigger"     , cmd_trigger     , 0},
     {"marker"      , cmd_marker      , 0},
@@ -2625,6 +2625,7 @@ int main(void)
   usbStart(serusbcfg.usbp, &usbcfg);
   usbConnectBus(serusbcfg.usbp);
 
+#ifdef __SI4432__
  /*
   * Powercycle the RF part to reset SI4432
   */
@@ -2635,7 +2636,7 @@ int main(void)
 #endif
   palSetPad(GPIOB, GPIOA_RF_PWR);
   chThdSleepMilliseconds(500);
-
+#endif
 
 #if 0
   palSetPadMode(GPIOA, 9, PAL_MODE_INPUT_ANALOG);
