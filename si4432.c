@@ -53,13 +53,11 @@ static uint32_t new_port_moder;
 
 #define CS_SI0_HIGH     palSetPad(GPIOB, GPIOB_RX_SEL)
 #define CS_SI1_HIGH     palSetPad(GPIOB, GPIOB_LO_SEL)
-#define CS_PE_HIGH      palSetPad(GPIOA, GPIOA_PE_SEL)
 
 #define RF_POWER_HIGH   palSetPad(GPIOB, GPIOB_RF_PWR)
 
 #define CS_SI0_LOW      palClearPad(GPIOB, GPIOB_RX_SEL)
 #define CS_SI1_LOW      palClearPad(GPIOB, GPIOB_LO_SEL)
-#define CS_PE_LOW       palClearPad(GPIOA, GPIOA_PE_SEL)
 
 #define SPI1_CLK_HIGH   palSetPad(GPIOB, GPIOB_SPI_SCLK)
 #define SPI1_CLK_LOW    palClearPad(GPIOB, GPIOB_SPI_SCLK)
@@ -71,8 +69,8 @@ static uint32_t new_port_moder;
 #define SPI1_SDO       ((palReadPort(GPIOB)>>GPIOB_SPI_MISO)&1)
 #define SPI1_portSDO   (palReadPort(GPIOB)&(1<<GPIOB_SPI_MISO))
 
-#define CS_PE_HIGH      palSetPad(GPIOC, GPIO_PE_SEL)
-#define CS_PE_LOW      palClearPad(GPIOC, GPIO_PE_SEL)
+#define CS_PE_HIGH      palSetPad(GPIOC, GPIOA_PE_SEL)
+#define CS_PE_LOW      palClearPad(GPIOC, GPIOA_PE_SEL)
 
 
 //#define MAXLOG 1024
@@ -249,7 +247,7 @@ void SI4432_Write_3_Byte(uint8_t ADR, uint8_t DATA1, uint8_t DATA2, uint8_t DATA
 uint8_t SI4432_Read_Byte( uint8_t ADR )
 {
   set_SPI_mode(SPI_MODE_SI);
-  byte DATA ;
+  uint8_t DATA ;
 //  if (SI4432_guard)
 //    while(1) ;
 //  SI4432_guard = 1;
@@ -405,7 +403,12 @@ uint16_t SI4432_SET_RBW(uint16_t WISH)  {
   return SI4432_force_RBW(i);
 }
 
+int setting_frequency_10mhz = 10000000;
 
+void set_10mhz(uint32_t f)
+{
+  setting_frequency_10mhz = f;
+}
 int SI4432_frequency_changed = false;
 int SI4432_offset_changed = false;
 
@@ -727,7 +730,6 @@ void SI4432_SetReference(int freq)
     SI4432_Write_Byte(Si4432_UC_OUTPUT_CLOCK, freq & 0x07) ; // Set GPIO2 frequency
   }
 }
-#endif
 #endif
 
 //------------PE4302 -----------------------------------------------
