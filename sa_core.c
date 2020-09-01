@@ -1593,7 +1593,7 @@ pureRSSI_t perform(bool break_on_operation, int i, uint32_t f, int tracking)    
       local_IF = 0;
     else {
       if (setting.auto_IF)
-        local_IF = 2000000000;
+        local_IF = 1995000000;
       else
         local_IF = setting.frequency_IF;
     }

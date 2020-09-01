@@ -121,11 +121,11 @@ void calculate_correlation(void)
   if (ph2 > 100000) {
     if (c2 == 1.0) aver = 0; else aver = 40;
     c1 = ((c1 * aver) + (float)ph1/(float)ph2 ) / (aver + 1);
-    if (c2 < 0.9) c2 = 0.9;
-    if (c2 > 1.1) c2 = 1.1;
+    if (c2 < 0.7) c2 = 0.7;
+    if (c2 > 1.3) c2 = 1.3;
     c2 = ((c2 * aver) + sqrt(((float)ph3*ph3 - (float)ph1*ph1)/((float)ph2*ph2)) ) / (aver+1);
 //    SHOW(c1,0);
-//    SHOW(c2,1);
+    SHOW(c2,1);
   }
 #ifdef __FLOAT_FFT__                                            // real FFT
   FFT(data, fft_bits, true);
@@ -270,7 +270,7 @@ float dsp_getmax(int fft_steps, int fft_step) {
     if (dsp_index == fft_len)
       dsp_filled = false;
     if (audio_level)
-      return data[2*(dsp_index++) + (audio_level & 1)] / (audio_level/2); // Get the raw audio signal left or right channel
+      return (data[2*(dsp_index++) + (audio_level & 1)] - (audio_level & 1 ? arzero:aizero )) / (audio_level/2); // Get the raw audio signal left or right channel
     maxdata = dsp_get(dsp_index++);
   } else {
     if (fft_step == 0) {
@@ -313,7 +313,9 @@ float dsp_getmax(int fft_steps, int fft_step) {
 }
 
 void dsp_init(int len, uint32_t sr) {
+#ifndef __TLV__         // sample rate set in tlv driver
   sample_rate = sr;
+#endif
   if (len < MIN_FFT_LEN)
     len = MIN_FFT_LEN;
   if (len > MAX_FFT_LEN)
