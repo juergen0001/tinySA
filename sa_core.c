@@ -1200,7 +1200,7 @@ void update_rbw(void)           // calculate the actual_rbw and the vbwSteps (# 
   int fft_l = MIN_FFT_LEN;
   while (fft_l < MAX_FFT_LEN && actual_rbw_x10 < sample_rate / fft_l / 100 )
     fft_l *= 2;
-  dsp_init(fft_l);
+  dsp_init(fft_l, 2400000);
 
   if (setting.frequency_step > 0) {
     if (setting.frequency_step > sample_rate /2)
@@ -1211,7 +1211,7 @@ void update_rbw(void)           // calculate the actual_rbw and the vbwSteps (# 
       FFT_steps = fft_l;
   } else {
     fft_l = 256;
-    dsp_init(fft_l);
+    dsp_init(fft_l, 2400000);
     FFT_steps = fft_l;
   }
 
@@ -1825,7 +1825,7 @@ static bool sweep(bool break_on_operation)
   else if ( MODE_INPUT(setting.mode) && setting.frequency_step > 0) {
     sweep_counter++;
     if (sweep_counter > 50 ) {     // refresh HW after 50 sweeps
-      dirty = true;
+//      dirty = true;   No HW refresh on FFT
       refreshing = true;
       sweep_counter = 0;
     }

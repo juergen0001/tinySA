@@ -2781,7 +2781,7 @@ goto again;
 #endif
   tlv320aic3204_select(0);      // Reflection port
 //  fill_dummy();
-  dsp_init(32);
+  dsp_init(32, 2400000);
   wait_count = 2;
 #endif
   area_height = AREA_HEIGHT_NORMAL;

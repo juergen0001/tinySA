@@ -40,7 +40,7 @@ int16_t window[MAX_FFT_LEN/2];
 
 int fft_len_div_2;
 int fft_len;
-int fft_fill = 0;
+int fft_fill = 0;   // Only to be used in dsp_fill
 int fft_bits = 1;
 static int16_t *l_c;
 
@@ -164,21 +164,9 @@ void dsp_process(int16_t *capture, size_t length)   // 2 samples per fft point
   for (int i=0;i<len_div_2;i++) {
     int16_t s;
     s = capture[i*2+0];
-//    rzero += s;
-//    s -= arzero;
     data[fft_fill++] = (float)s;
-//    if (s < 0)
-//      s = -s;
-//    if (s_max < s)
-//      s_max = s;
     s = capture[i*2+1];
-//    izero += s;
-//    s -= aizero;
     data[fft_fill++] = (float)s;
-//    if (s < 0)
-//      s = -s;
-//    if (s_max < s)
-//      s_max = s;
   }
   if (fft_fill < fft_len*2)
     wait_count++;           // Get one more buffer
@@ -190,7 +178,14 @@ void dsp_process(int16_t *capture, size_t length)   // 2 samples per fft point
 //  aizero = (aizero * AVER_ZERO * len_div_2 + izero)/(AVER_ZERO+1)/len_div_2;
 }
 
-
+void dsp_load_from_adc(void)
+{
+  int16_t *raw_data = (int16_t *)data;
+  adc_multi_read((uint16_t *)raw_data, fft_len*2);
+  for (int i=fft_len*2 -1 ;i>=0;i--) {
+    data[i] = (float)raw_data[i];
+  }
+}
 
 static int dsp_filled = false;
 static int dsp_index = 0;
@@ -202,11 +197,14 @@ void set_audio_level(int l)
   audio_level = l;
 }
 
-void dsp_fill(void)
+void dsp_fill(void)         // Only used from zero span
 {
+#ifdef __TLV__
   wait_count = 3;
   while (wait_count) __WFI();
-
+#else
+  dsp_load_from_adc();
+#endif
   if (audio_level==0)
     calculate_correlation();
   dsp_filled = true;
@@ -269,15 +267,19 @@ float dsp_get_one(int fi)
 float dsp_getmax(int fft_steps, int fft_step) {
   float maxdata = 0;
   if (dsp_filled) {
-    if (dsp_index == fft_len - 1)
+    if (dsp_index == fft_len)
       dsp_filled = false;
     if (audio_level)
       return data[2*(dsp_index++) + (audio_level & 1)] / (audio_level/2); // Get the raw audio signal left or right channel
     maxdata = dsp_get(dsp_index++);
   } else {
     if (fft_step == 0) {
+#ifdef __TLV__
       wait_count = 3;
       while (wait_count) __WFI();
+#else
+      dsp_load_from_adc();
+#endif
       calculate_correlation();
     }
     float submax;
@@ -310,7 +312,8 @@ float dsp_getmax(int fft_steps, int fft_step) {
   return RSSI;
 }
 
-void dsp_init(int len) {
+void dsp_init(int len, uint32_t sr) {
+  sample_rate = sr;
   if (len < MIN_FFT_LEN)
     len = MIN_FFT_LEN;
   if (len > MAX_FFT_LEN)

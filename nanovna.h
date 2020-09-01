@@ -40,7 +40,7 @@
 //#define __SPUR__                // Does spur reduction by shifting IF
 //#define __TRIGGER__
 #define __ENABLE_CLK2__
-#define __TLV__               // If disabled us F303 ADC's
+//#define __TLV__               // If disabled us F303 ADC's
 #define __FLOAT_FFT__
 //#define __INT_FFT__
 /*
@@ -262,7 +262,7 @@ extern int16_t samp_buf[];
 #endif
 #endif
 void dsp_process(int16_t *src, size_t len);
-void dsp_init(int len);
+void dsp_init(int len, uint32_t sr);
 void dsp_fill(void);
 float dsp_getmax(int fft_steps, int fft_step);
 void set_audio_level(int);

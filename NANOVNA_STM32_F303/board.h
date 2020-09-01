@@ -174,9 +174,9 @@
                                      PIN_OSPEED_100M(GPIOA_JTCK) |         \
                                      PIN_OSPEED_100M(GPIOA_LCD_RESET))
 #define VAL_GPIOA_PUPDR           (PIN_PUPDR_FLOATING(0) | \
-                                     PIN_PUPDR_PULLDOWN(1) | \
+                                     PIN_PUPDR_FLOATING(1) | \
                                      PIN_PUPDR_PULLDOWN(2) | \
-                                     PIN_PUPDR_PULLDOWN(3) | \
+                                     PIN_PUPDR_FLOATING(3) | \
                                      PIN_PUPDR_PULLUP(4) |         \
                                      PIN_PUPDR_FLOATING(5) |         \
                                      PIN_PUPDR_FLOATING(6) |         \
