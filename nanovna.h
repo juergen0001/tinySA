@@ -40,7 +40,8 @@
 //#define __SPUR__                // Does spur reduction by shifting IF
 //#define __TRIGGER__
 #define __ENABLE_CLK2__
-#define __TLV__               // If disabled us F303 ADC's
+//#define __TLV__               // If disabled us F303 ADC's
+//#define __OPAMP__
 #define __FLOAT_FFT__
 //#define __INT_FFT__
 /*

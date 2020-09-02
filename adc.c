@@ -113,6 +113,9 @@ void adc_init(void)
 {
   adcStart(&ADCD_2, NULL);
   adcStart(&ADCD1, NULL);
+#ifdef __OPAMP__
+  OPAMP1->CSR = OPAMP1_CSR_OPAMP1EN | OPAMP1_CSR_VPSEL | OPAMP1_CSR_VMSEL_1; // OPAMP1 PGA 2x Input: A1 Output: A2
+#endif
   #ifdef F303_ADC_VREF_ALWAYS_ON
   adcSTM32EnableVBAT(&ADCD1);
   adcSTM32EnableVREF(&ADCD1);
@@ -230,8 +233,12 @@ static const ADCConversionGroup adcgrpcfgIQ =
  ADC_CCR_DUAL_FIELD(0),    // Only used in DUAL mode
 #endif
  {ADC_SMPR1_SMP_AN2(ADC_SMPR_SMP_1P5)|ADC_SMPR1_SMP_AN3(ADC_SMPR_SMP_1P5), 0/*| ADC_SMPR2_SMP_AN18(ADC_VBAT_SMP_TIME)*/}, // SMPR
+#ifdef __OPAMP__
+ {ADC_SQR1_NUM_CH(2)| ADC_SQR1_SQ1_N(ADC_CHANNEL_IN3) | ADC_SQR1_SQ2_N(ADC_CHANNEL_IN4)/*| ADC_SQR1_SQ3_N(ADC_CHANNEL_IN16)*/, 0, 0, 0}           // CHSELR
+#else
  {ADC_SQR1_NUM_CH(2)| ADC_SQR1_SQ1_N(ADC_CHANNEL_IN2) | ADC_SQR1_SQ2_N(ADC_CHANNEL_IN4)/*| ADC_SQR1_SQ3_N(ADC_CHANNEL_IN16)*/, 0, 0, 0}           // CHSELR
-#if STM32_ADC_DUAL_MODE
+#endif
+ #if STM32_ADC_DUAL_MODE
 ,{0,0},
 {                                                             /* SQR[4]   */
   0,
