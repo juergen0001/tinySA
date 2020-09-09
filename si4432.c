@@ -321,11 +321,10 @@ typedef struct {
   int8_t   RSSI_correction_x_10;  // Correction * 10
   uint16_t RBWx10;                // RBW * 10 in kHz
 }RBW_t; // sizeof(RBW_t) = 4 bytes
-
-static RBW_t RBW_choices[] = {
+RBW_t RBW_choices[] = {
 // BW register    corr  freq
-                              {IF_BW(0,5,1),0,26},
-                              {IF_BW(0,5,2),0,28},
+//                              {IF_BW(0,5,1),0,26},
+//                              {IF_BW(0,5,2),0,28},
                               {IF_BW(0,5,3),3,31},
                               {IF_BW(0,5,4),-3,32},
                               {IF_BW(0,5,5),6,37},
@@ -385,6 +384,8 @@ static RBW_t RBW_choices[] = {
 
 };
 
+const int SI4432_RBW_count = ((int)(sizeof(RBW_choices)/sizeof(RBW_t)));
+
 static pureRSSI_t SI4432_RSSI_correction = float_TO_PURE_RSSI(-120);
 
 uint16_t SI4432_force_RBW(int i)
@@ -397,7 +398,7 @@ uint16_t SI4432_force_RBW(int i)
 
 uint16_t SI4432_SET_RBW(uint16_t WISH)  {
   int i;
-  for (i=0; i < (int)(sizeof(RBW_choices)/sizeof(RBW_t)) - 1; i++)
+  for (i=0; i < SI4432_RBW_count - 1; i++)
     if (WISH <= RBW_choices[i].RBWx10) 
       break; 
   return SI4432_force_RBW(i);
@@ -422,6 +423,9 @@ static int written[2]= {0,0};
 void SI4432_Set_Frequency ( uint32_t Freq ) {
 //  int mode = SI4432_Read_Byte(0x02) & 0x03;           // Disabled as unreliable
 //  SI4432_Write_Byte(0x07, 0x02);    // Switch to tune mode
+
+//  Freq = (Freq / 1000 ) * 1000; // force freq to 1000 grid
+
   uint8_t hbsel;
   if (0) shell_printf("%d: Freq %q\r\n", SI4432_Sel, Freq);
   if (Freq >= 480000000U) {

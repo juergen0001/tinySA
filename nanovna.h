@@ -202,6 +202,7 @@ void set_sweep_time_us(uint32_t);
 #ifdef __SPUR__
 //extern int setting.spur;
 void set_spur(int v);
+void toggle_mirror_masking(void);
 #endif
 void set_average(int);
 int GetAverage(void);
@@ -653,7 +654,8 @@ typedef struct setting
   int freq_mode;
   int measurement;
   int refer;
-  int spur;
+  int spur_removal;
+  int mirror_masking;
   trace_t _trace[TRACES_MAX];
   marker_t _markers[MARKERS_MAX];
   int8_t _active_marker;

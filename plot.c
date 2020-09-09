@@ -2098,8 +2098,8 @@ static void cell_draw_marker_info(int x0, int y0)
       ili9341_set_background(DEFAULT_BG_COLOR);
       uint16_t color;
       if ((!setting.subtract_stored) &&     // Disabled when normalized
-          ((setting.mode == M_LOW && temppeakLevel - get_attenuation() + setting.offset > -1) ||
-           (setting.mode == M_HIGH && temppeakLevel - get_attenuation()+ setting.offset > -10) ))
+          ((setting.mode == M_LOW && temppeakLevel - get_attenuation() + setting.offset > -10) ||
+           (setting.mode == M_HIGH && temppeakLevel - get_attenuation()+ setting.offset > -29) ))
         color = BRIGHT_COLOR_RED;
       else
         color = marker_color(markers[i].mtype);

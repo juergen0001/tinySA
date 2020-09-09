@@ -98,7 +98,7 @@ tinySA is a trademark owned by its respective owner. Unauthorized use the the na
 
 ## Authorized Distributor
 
-* [NotYet](https://www.notyet.com/)
+* [See the Wiki](https://tinysa.org/wiki/pmwiki.php?n=Main.Buying)
 
 ## Credit
 

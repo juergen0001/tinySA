@@ -706,14 +706,23 @@ static UI_FUNCTION_ADV_CALLBACK(menu_spur_acb)
   (void)data;
   (void)item;
   if (b){
-    b->icon = setting.spur == 0 ? BUTTON_ICON_NOCHECK : BUTTON_ICON_CHECK;
+    if (setting.mode == M_LOW) {
+      b->param_1.text = "SPUR\nREMOVAL";
+      b->icon = setting.spur_removal == 0 ? BUTTON_ICON_NOCHECK : BUTTON_ICON_CHECK;
+    } else {
+      b->param_1.text = "MIRROR\nMASKING";
+      b->icon = setting.mirror_masking == 0 ? BUTTON_ICON_NOCHECK : BUTTON_ICON_CHECK;
+    }
     return;
   }
-  if (setting.spur)
-    set_spur(0);
-  else
-    set_spur(1); // must be 0 or 1 !!!!
-//  menu_move_back();
+  if (setting.mode == M_LOW) {
+    if (setting.spur_removal)
+      set_spur(0);
+    else
+      set_spur(1); // must be 0 or 1 !!!!
+  } else
+    toggle_mirror_masking();
+  //  menu_move_back();
   ui_mode_normal();
 }
 #endif
@@ -848,7 +857,7 @@ static UI_FUNCTION_ADV_CALLBACK(menu_atten_high_acb)
 {
   (void)item;
   if(b){
-    b->icon = (setting.atten_step && data) ? BUTTON_ICON_CHECK : BUTTON_ICON_NOCHECK;
+    b->icon = (setting.atten_step*30 == data) ? BUTTON_ICON_GROUP_CHECKED : BUTTON_ICON_GROUP;
     return;
   }
   setting.auto_attenuation = false;
@@ -1664,7 +1673,7 @@ static const menuitem_t menu_stimulus[] = {
   { MT_KEYPAD,  KM_CW,          "ZERO SPAN",   NULL},
   { MT_SUBMENU,0,               "RBW",         menu_rbw},
 #ifdef __SPUR__
-  { MT_ADV_CALLBACK | MT_LOW,0, "SPUR\nREMOVAL", menu_spur_acb},
+  { MT_ADV_CALLBACK,0,          "%s",          menu_spur_acb},
 #endif
   { MT_CANCEL,  0,              S_LARROW" BACK", NULL },
   { MT_NONE,    0, NULL, NULL } // sentinel

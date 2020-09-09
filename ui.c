@@ -1867,6 +1867,9 @@ menu_apply_touch(void)
       y += MENU_BUTTON_HEIGHT;
       continue;
     }
+    if (MT_MASK(menu[i].type) == MT_NONE) {
+      break;
+    }
     int active_button_start;
     if (menu[i].type & MT_FORM) {
       active_button_start = (LCD_WIDTH - MENU_FORM_WIDTH)/2;
