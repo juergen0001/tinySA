@@ -188,7 +188,7 @@ caldata_recall(uint16_t id)
   memcpy(dst, src, sizeof(setting_t));
   // Restore stored trace
   memcpy(stored_t, &src[1], sizeof(stored_t));
-
+  update_min_max_freq();
   update_frequencies();
   set_scale(setting.scale);
   set_reflevel(setting.reflevel);

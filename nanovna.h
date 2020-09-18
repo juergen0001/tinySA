@@ -36,6 +36,7 @@
 #define __CALIBRATE__
 #define __FAST_SWEEP__          // Pre-fill SI4432 RSSI buffer  to get fastest sweep in zero span mode
 #define __AUDIO__
+//#define __HAM_BAND__
 //#define __ULTRA__             // Add harmonics mode on low input.
 //#define __ULTRA_SA__            // Adds ADF4351 control for extra high 1st IF stage
 #define __SPUR__                // Does spur reduction by shifting IF
@@ -130,7 +131,7 @@ void update_frequencies(void);
 void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);
 void my_microsecond_delay(int t);
-double my_atof(const char *p);
+float my_atof(const char *p);
 int shell_printf(const char *fmt, ...);
 
 void toggle_sweep(void);
@@ -172,6 +173,7 @@ extern const char *info_about[];
 
 // ------------------------------- sa_core.c ----------------------------------
 void reset_settings(int);
+void update_min_max_freq(void);
 //void ui_process_touch(void);
 void SetPowerGrid(int);
 void SetRefLevel(float);
@@ -451,6 +453,7 @@ typedef struct config {
   uint32_t correction_frequency[CORRECTION_POINTS];
   float    correction_value[CORRECTION_POINTS];
   uint32_t deviceid;
+  uint16_t ham_color;
 //  uint8_t _reserved[22];
   uint32_t checksum;
 } config_t;
@@ -556,6 +559,7 @@ extern volatile uint8_t redraw_request;
 #define DARK_GREY                   RGB565(140,140,140)
 #define LIGHT_GREY                  RGB565(220,220,220)
 #define DEFAULT_GRID_COLOR          RGB565(128,128,128)
+#define DEFAULT_HAM_COLOR           RGB565(80,80,80)
 #define DEFAULT_GRID_VALUE_COLOR    RGB565(196,196,196)
 #define DEFAULT_MENU_COLOR          RGB565(255,255,255)
 #define DEFAULT_MENU_TEXT_COLOR     RGB565(  0,  0,  0)
@@ -710,7 +714,7 @@ extern uint32_t frequencies[POINTS_COUNT];
 extern const float unit_scale_value[];
 extern const char * const unit_scale_text[];
 
-#if 1
+#if 1   // Still sufficient flash
 // Flash save area - flash7  : org = 0x0801B000, len = 20k in *.ld file
 // 2k - for config save
 // 9 * 2k for setting_t + stored trace
@@ -725,21 +729,23 @@ extern const char * const unit_scale_text[];
 #define SAVE_PROP_CONFIG_SIZE   0x00000800
 // Should include all save slots
 #define SAVE_CONFIG_AREA_SIZE   (SAVE_CONFIG_SIZE + SAVEAREA_MAX * SAVE_PROP_CONFIG_SIZE)
-
-
-#else
-#define SAVEAREA_MAX 4
-// Begin addr                   0x0801C000
-#define SAVE_CONFIG_AREA_SIZE   0x00004000
-// config save area
-#define SAVE_CONFIG_ADDR        0x0801C000
-// properties_t save area
-#define SAVE_PROP_CONFIG_0_ADDR 0x0801C800
-#define SAVE_PROP_CONFIG_1_ADDR 0x0801D000
-#define SAVE_PROP_CONFIG_2_ADDR 0x0801D800
-#define SAVE_PROP_CONFIG_3_ADDR 0x0801E000
-#define SAVE_PROP_CONFIG_4_ADDR 0x0801e800
+#else           // Just in case flash runs out
+// Flash save area - flash7  : org = 0x0801D000, len = 12k in *.ld file
+// 2k - for config save
+// 9 * 2k for setting_t + stored trace
+#define SAVEAREA_MAX 5
+// STM32 minimum page size for write
+#define FLASH_PAGESIZE          0x800
+// config save area (flash7 addr)
+#define SAVE_CONFIG_ADDR        0x0801D000
+#define SAVE_CONFIG_SIZE        0x00000800
+// setting_t save area (save area + config size)
+#define SAVE_PROP_CONFIG_ADDR   (SAVE_CONFIG_ADDR + SAVE_CONFIG_SIZE)
+#define SAVE_PROP_CONFIG_SIZE   0x00000800
+// Should include all save slots
+#define SAVE_CONFIG_AREA_SIZE   (SAVE_CONFIG_SIZE + SAVEAREA_MAX * SAVE_PROP_CONFIG_SIZE)
 #endif
+
 #if 0
 typedef struct properties {
   uint32_t magic;
@@ -960,7 +966,7 @@ uint32_t calc_min_sweep_time_us(void);
 pureRSSI_t perform(bool b, int i, uint32_t f, int e);
 
 enum {
-  M_OFF, M_IMD, M_OIP3, M_PHASE_NOISE, M_STOP_BAND, M_PASS_BAND, M_LINEARITY
+  M_OFF, M_IMD, M_OIP3, M_PHASE_NOISE, M_STOP_BAND, M_PASS_BAND, M_LINEARITY, M_AM, M_FM
 };
 
 enum {

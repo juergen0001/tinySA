@@ -16,6 +16,9 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
+#pragma GCC push_options
+#pragma GCC optimize ("Os")
+
 
 #define FORM_ICON_WIDTH      16
 #define FORM_ICON_HEIGHT     16
@@ -499,7 +502,7 @@ static UI_FUNCTION_ADV_CALLBACK(menu_load_preset_acb)
   }
   if (caldata_recall(data) == -1) {
     if (data == 0)
-      reset_settings(setting.mode);  // Restore all defaults
+      reset_settings(setting.mode);  // Restore factory defaults
     else {
       draw_menu();
       return;
@@ -834,6 +837,35 @@ static UI_FUNCTION_ADV_CALLBACK(menu_measure_acb)
       set_measurement(M_LINEARITY);
       ui_mode_normal();
       break;
+    case M_AM:                                     // OIP3
+      reset_settings(setting.mode);
+      for (int i = 0; i< 3; i++) {
+        markers[i].enabled = M_ENABLED;
+        markers[i].mtype = M_DELTA | M_TRACKING;
+      }
+      markers[0].mtype = M_REFERENCE | M_TRACKING;
+      kp_help_text = "Frequency of signal";
+      ui_mode_keypad(KM_CENTER);
+      ui_process_keypad();
+      set_sweep_frequency(ST_SPAN, 100000);     // 100kHz
+      set_measurement(M_AM);
+      break;
+    case M_FM:                                     // OIP3
+      reset_settings(setting.mode);
+      for (int i = 0; i< 3; i++) {
+        markers[i].enabled = M_ENABLED;
+        markers[i].mtype = M_DELTA | M_TRACKING;
+      }
+      markers[0].mtype = M_REFERENCE | M_TRACKING;
+      kp_help_text = "Frequency of signal";
+      ui_mode_keypad(KM_CENTER);
+      ui_process_keypad();
+      kp_help_text = "Frequency deviation";
+      ui_mode_keypad(KM_SPAN);
+      ui_process_keypad();
+      set_sweep_frequency(ST_SPAN, uistat.value*30);
+      set_measurement(M_FM);
+      break;
   }
 #endif
 //  selection = -1;
@@ -948,6 +980,7 @@ static UI_FUNCTION_ADV_CALLBACK(menu_marker_select_acb)
     return;
   }
   markers[data-1].enabled = true;
+  markers[data-1].frequency = frequencies[markers[data-1].index];
   active_marker_select(data-1);
   menu_push_submenu(menu_marker_modify);
   redraw_marker(active_marker);
@@ -1570,14 +1603,22 @@ static const menuitem_t menu_settings[] =
   { MT_NONE,     0, NULL, NULL } // sentinel
 };
 
-static const menuitem_t menu_measure[] = {
-  { MT_ADV_CALLBACK,            M_OFF,        "OFF",              menu_measure_acb},
-  { MT_ADV_CALLBACK,            M_IMD,        "HARMONIC",         menu_measure_acb},
-  { MT_ADV_CALLBACK,            M_OIP3,       "OIP3",             menu_measure_acb},
-  { MT_ADV_CALLBACK,            M_PHASE_NOISE,"PHASE\nNOISE",     menu_measure_acb},
-//  { MT_ADV_CALLBACK,            M_STOP_BAND,  "STOP\nBAND",     menu_measure_acb},
-//  { MT_ADV_CALLBACK,            M_PASS_BAND,  "PASS\nBAND",     menu_measure_acb},
+static const menuitem_t menu_measure2[] = {
 //  { MT_ADV_CALLBACK | MT_LOW,   M_LINEARITY,  "LINEAR",         menu_measure_acb},
+  { MT_ADV_CALLBACK,            M_AM,           "AM",           menu_measure_acb},
+  { MT_ADV_CALLBACK,            M_FM,           "FM",           menu_measure_acb},
+  { MT_CANCEL, 0,               S_LARROW" BACK", NULL },
+  { MT_NONE,   0, NULL, NULL } // sentinel
+};
+
+static const menuitem_t menu_measure[] = {
+  { MT_ADV_CALLBACK,            M_OFF,        "OFF",            menu_measure_acb},
+  { MT_ADV_CALLBACK,            M_IMD,        "HARMONIC",       menu_measure_acb},
+  { MT_ADV_CALLBACK,            M_OIP3,       "OIP3",           menu_measure_acb},
+  { MT_ADV_CALLBACK,            M_PHASE_NOISE,"PHASE\nNOISE",   menu_measure_acb},
+  { MT_ADV_CALLBACK,            M_STOP_BAND,  "SNR",            menu_measure_acb},
+  { MT_ADV_CALLBACK,            M_PASS_BAND,  "-6dB\nWIDTH",     menu_measure_acb},
+  { MT_SUBMENU,  0,             S_RARROW" MORE",                menu_measure2},
   { MT_CANCEL, 0,               S_LARROW" BACK", NULL },
   { MT_NONE,   0, NULL, NULL } // sentinel
 };
@@ -1966,3 +2007,4 @@ menu_move_top(void)
     menu_move_back();
 }
 
+#pragma GCC pop_options

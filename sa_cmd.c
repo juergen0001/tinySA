@@ -14,6 +14,8 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
+#pragma GCC push_options
+#pragma GCC optimize ("Os")
 
 
 static int VFO = 0;
@@ -630,5 +632,21 @@ VNA_SHELL_FUNCTION(cmd_scanraw)
   setting.frequency_step = old_step;
   redraw_request = 0; // disable screen update in this mode
 }
+
+VNA_SHELL_FUNCTION(cmd_caloutput)
+{
+  static const char cmd[] = "off|30|15|10|4|3|2|1";
+  if (argc != 1) {
+  usage:
+    shell_printf("usage: caloutput %s\r\n", cmd);
+    return;
+  }
+  int m = get_str_index(argv[0], cmd);
+  if (m != -1)
+    set_refer_output(m - 1);
+}
+
+
+#pragma GCC pop_options
 
 

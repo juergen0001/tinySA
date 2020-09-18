@@ -17,7 +17,7 @@
  */
 
 #ifdef __SI4432__
-#include "SI4432.h"		// comment out for simulation
+#include "si4432.h"		// comment out for simulation
 #endif
 #include "stdlib.h"
 
@@ -62,10 +62,44 @@ this is a very long string only used to fill memory so I know when the memory is
 ;
 #endif
 
+void update_min_max_freq(void)
+{
+  switch(setting.mode) {
+  case M_LOW:
+    minFreq = 0;
+    maxFreq = 350000000;
+    break;
+#ifdef __ULTRA__
+  case M_ULTRA:
+    minFreq = 674000000;
+    maxFreq = 4300000000;
+    break;
+#endif
+  case M_GENLOW:
+    minFreq = 0;
+    maxFreq = 350000000;
+    break;
+  case M_HIGH:
+#ifdef __ULTRA_SA__
+    minFreq = 00000000;
+    maxFreq = 2000000000;
+#else
+    minFreq = 24*setting_frequency_10mhz;
+    maxFreq = 96*setting_frequency_10mhz;
+#endif
+    break;
+  case M_GENHIGH:
+    minFreq = 240000000;
+    maxFreq = 960000000;
+    break;
+  }
+}
+
 void reset_settings(int m)
 {
 //  strcpy((char *)spi_buffer, dummy);
   setting.mode = m;
+  update_min_max_freq();
   sweep_mode |= SWEEP_ENABLE;
   setting.unit_scale_index = 0;
   setting.unit_scale = 1;
@@ -116,48 +150,33 @@ void reset_settings(int m)
 #endif
   switch(m) {
   case M_LOW:
-    minFreq = 0;
-    maxFreq = 350000000;
-    set_sweep_frequency(ST_START, (uint32_t) 0);
-    set_sweep_frequency(ST_STOP, (uint32_t) 350000000);
+    set_sweep_frequency(ST_START, minFreq);
+    set_sweep_frequency(ST_STOP, maxFreq);
     setting.attenuate = 30.0;
     setting.auto_attenuation = true;
     setting.sweep_time_us = 0;
     break;
 #ifdef __ULTRA__
   case M_ULTRA:
-    minFreq = 674000000;
-    maxFreq = 4300000000;
-    set_sweep_frequency(ST_START, (uint32_t) minFreq);
-    set_sweep_frequency(ST_STOP, (uint32_t) maxFreq);
+    set_sweep_frequency(ST_START, minFreq);
+    set_sweep_frequency(ST_STOP, maxFreq);
     setting.attenuate = 0;
     setting.sweep_time_us = 0;
     break;
 #endif
   case M_GENLOW:
     setting.drive=8;
-    minFreq = 0;
-    maxFreq = 350000000;
     set_sweep_frequency(ST_CENTER, 10000000);
     set_sweep_frequency(ST_SPAN, 0);
     setting.sweep_time_us = 10*ONE_SECOND_TIME;
     break;
   case M_HIGH:
-#ifdef __ULTRA_SA__
-    minFreq = 00000000;
-    maxFreq = 2000000000;
-#else
-    minFreq = 24*setting_frequency_10mhz;
-    maxFreq = 96*setting_frequency_10mhz;
-#endif
     set_sweep_frequency(ST_START, minFreq);
     set_sweep_frequency(ST_STOP,  maxFreq);
     setting.sweep_time_us = 0;
     break;
   case M_GENHIGH:
     setting.drive=8;
-    minFreq = 240000000;
-    maxFreq = 960000000;
     set_sweep_frequency(ST_CENTER, 300000000);
     set_sweep_frequency(ST_SPAN, 0);
     setting.sweep_time_us = 10*ONE_SECOND_TIME;
@@ -204,7 +223,10 @@ uint32_t calc_min_sweep_time_us(void)         // Estimate minimum sweep time in 
 void set_refer_output(int v)
 {
   setting.refer = v;
-  dirty = true;
+#ifdef __SI4432__
+  SI4432_SetReference(setting.refer);
+#endif
+//  dirty = true;
 }
 
 void set_decay(int d)
@@ -1328,6 +1350,7 @@ search_maximum(int m, int center, int span)
     }
   }
   markers[m].index = max_index[0];
+  markers[m].frequency = frequencies[markers[m].index];
   return found;
 }
 
@@ -2273,10 +2296,14 @@ sweep_again:                                // stay in sweep loop when output mo
       }
       uint32_t lf = frequencies[l];
       uint32_t rf = frequencies[r];
+      markers[0].frequency = lf;
+      markers[1].frequency = rf;
+
       markers[2].enabled = search_maximum(2, lf - (rf - lf), 12);
       markers[3].enabled = search_maximum(3, rf + (rf - lf), 12);
     } else if (setting.measurement == M_PHASE_NOISE  && markers[0].index > 10) {    //  ------------Phase noise measurement
       markers[1].index =  markers[0].index + (setting.mode == M_LOW ? 290/4 : -290/4);  // Position phase noise marker at requested offset
+      markers[1].frequency = frequencies[markers[1].index];
     } else if (setting.measurement == M_STOP_BAND  && markers[0].index > 10) {      // -------------Stop band measurement
       markers[1].index =  marker_search_left_min(markers[0].index);
       if (markers[1].index < 0) markers[1].index = 0;
@@ -2285,15 +2312,29 @@ sweep_again:                                // stay in sweep loop when output mo
     } else if (setting.measurement == M_PASS_BAND  && markers[0].index > 10) {      // ----------------Pass band measurement
       int t = markers[0].index;
       float v = actual_t[t];
-      while (t > 0 && actual_t[t] > v - 3.0)                                        // Find left -3dB point
+      while (t > 0 && actual_t[t] > v - 6.0)                                        // Find left -3dB point
         t --;
       if (t > 0)
         markers[1].index = t;
       t = markers[0].index;
-      while (t < setting._sweep_points - 1 && actual_t[t] > v - 3.0)                // find right -3dB point
+      while (t < setting._sweep_points - 1 && actual_t[t] > v - 6.0)                // find right -3dB point
         t ++;
       if (t < setting._sweep_points - 1 )
         markers[2].index = t;
+    } else if (setting.measurement == M_AM) {      // ----------------AM measurement
+      if (S_IS_AUTO(setting.agc )) {
+        if (actual_t[max_index[0]]  - get_attenuation() > -20 ) {
+          setting.agc = S_AUTO_OFF;
+          setting.lna = S_AUTO_OFF;
+        } else if (actual_t[max_index[0]]  - get_attenuation() < -45 ) {
+          setting.agc = S_AUTO_ON;
+          setting.lna = S_AUTO_ON;
+        } else {
+          setting.agc = S_AUTO_OFF;
+          setting.lna = S_AUTO_ON;
+        }
+        set_AGC_LNA();
+      }
     }
 
 #endif
@@ -3151,10 +3192,12 @@ common_silent:
     set_mode(M_LOW);
     maxFreq = 520000000;            // needed to measure the LPF rejection
     set_refer_output(0);
+    dirty = true;
  //   set_step_delay(1);                      // Do not set !!!!!
 #ifdef __SPUR__
     setting.spur_removal = 1;
 #endif
+
     goto common;
   case TPH_30MHZ:
     set_mode(M_HIGH);

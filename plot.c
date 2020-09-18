@@ -41,6 +41,7 @@ void cell_draw_test_info(int x0, int y0);
 
 static int16_t grid_offset;
 static int16_t grid_width;
+static int32_t grid_span;
 
 int16_t area_width  = AREA_WIDTH_NORMAL;
 int16_t area_height; // initialized in main()  = AREA_HEIGHT_NORMAL;
@@ -127,19 +128,22 @@ void update_grid(void)
     fstart = 0;
   }
 
+#define GRIDLINE_MINIMUM 7
+
   while (gdigit > 100) {
     grid = 5 * gdigit;
-    if (fspan / grid >= 4)
+    if (fspan / grid >= GRIDLINE_MINIMUM)
       break;
     grid = 2 * gdigit;
-    if (fspan / grid >= 4)
+    if (fspan / grid >= GRIDLINE_MINIMUM)
       break;
     grid = gdigit;
-    if (fspan / grid >= 4)
+    if (fspan / grid >= GRIDLINE_MINIMUM)
       break;
     gdigit /= 10;
   }
 
+  grid_span = grid;
   grid_offset = (WIDTH) * ((fstart % grid) / 100) / (fspan / 100);
   grid_width = (WIDTH) * (grid / 100) / (fspan / 1000);
 
@@ -401,6 +405,49 @@ rectangular_grid(int x, int y)
 }
 #endif
 
+#ifdef __HAM_BAND__
+typedef const struct {
+  uint32_t start;
+  uint32_t stop;
+} ham_bands_t;
+
+const ham_bands_t ham_bands[] =
+{
+  {135700, 137800},
+  {472000, 479000},
+  {1800000, 2000000},
+  {3500000, 3800000},
+  {5250000, 5450000},
+  {7000000, 7200000},
+  {10100000, 10150000},
+  {14000000, 14350000},
+  {18068000, 18168000},
+  {21000000, 21450000},
+  {24890000, 24990000},
+  {28000000, 29700000},
+  {50000000, 52000000},
+  {70000000, 70500000},
+  {144000000, 146000000}
+};
+
+int ham_band(int x)      // Search which index in the frequency tabled matches with frequency  f using actual_rbw
+{
+  uint32_t f = frequencies[x];
+  int L = 0;
+  int R =  (sizeof ham_bands)/sizeof(uint32_t) - 1;
+  while (L <= R) {
+    int m = (L + R) / 2;
+    if (ham_bands[m].stop < f)
+      L = m + 1;
+    else if (ham_bands[m].start > f)
+      R = m - 1;
+    else
+       return true; // index is m
+  }
+  return false;
+}
+#endif
+
 static int
 rectangular_grid_x(int x)
 {
@@ -462,30 +509,31 @@ draw_on_strut(int v0, int d, int color)
 #define SQRT_50 ((float)7.0710678118654)
 #define LOG_10_SQRT_50 ((float)0.84948500216800)
 #define POW_30_20   ((float) 0.215443469)
-#define POW_SQRT    1.5234153789
+#define POW_SQRT    ((float)1.5234153789)
 /*
- * calculate log10(abs(gamma))
+ * calculate log10f(abs(gamma))
  */ 
+
 float
 value(const float v)
 {
   switch(setting.unit)
   {
   case U_DBMV:
-//    return v + 30.0 + 20.0*log10(sqrt(50));
+//    return v + 30.0 + 20.0*log10f(sqrt(50));
     return v + 30.0 + 20.0*LOG_10_SQRT_50;     //TODO convert constants to single float number as GCC compiler does runtime calculation
     break;
   case U_DBUV:
-//    return v + 90.0 + 20.0*log10(sqrt(50.0));     //TODO convert constants to single float number as GCC compiler does runtime calculation
+//    return v + 90.0 + 20.0*log10f(sqrt(50.0));     //TODO convert constants to single float number as GCC compiler does runtime calculation
     return v + 90.0 + 20.0*LOG_10_SQRT_50;
     break;
   case U_VOLT:
-//  return pow(10, (v-30.0)/20.0) * sqrt(50.0);
-    return pow(10, (v-30.0)/20.0)*SQRT_50;
+//  return pow(10, (v-30.0)/20.0) * sqrt((float)50.0);
+    return pow((float)10.0, (v-(float)30.0)/(float)20.0)*SQRT_50;  // Do NOT change pow to powf as this will increase the size
 //    return pow(10, v/20.0) * POW_SQRT;      //TODO there is an error in this calculation as the outcome is different from the not optimized version
     break;
   case U_WATT:
-    return pow(10, v/10.0)/1000.0;
+    return pow((float)10.0, v/10.0)/1000.0;  // Do NOT change pow to powf as this will increase the size
     break;
   }
 //  case U_DBM:
@@ -499,19 +547,19 @@ to_dBm(const float v)
   switch(setting.unit)
   {
   case U_DBMV:
-//  return v - 30.0 - 20.0*log10(sqrt(50));
+//  return v - 30.0 - 20.0*log10f(sqrt(50));
     return v - 30.0 - 20.0*LOG_10_SQRT_50;
     break;
   case U_DBUV:
-//  return v - 90.0 - 20.0*log10(sqrt(50.0));     //TODO convert constants to single float number as GCC compiler does runtime calculation
+//  return v - 90.0 - 20.0*log10f(sqrt(50.0));     //TODO convert constants to single float number as GCC compiler does runtime calculation
     return v - 90.0 - 20.0*LOG_10_SQRT_50;
     break;
   case U_VOLT:
-//  return log10( v / (sqrt(50.0))) * 20.0 + 30.0 ;
-    return log10( v / (SQRT_50)) * 20.0 + 30.0 ;
+//  return log10f( v / (sqrt(50.0))) * 20.0 + 30.0 ;
+    return log10f( v / (SQRT_50)) * 20.0 + 30.0 ;
     break;
   case U_WATT:
-    return log10(v*1000.0)*10.0;
+    return log10f(v*1000.0)*10.0;
     break;
   }
 //  case U_DBM:
@@ -842,7 +890,7 @@ trace_get_value_string_delta(int t, char *buf, int len, float array[POINTS_COUNT
 
 extern const char *unit_string[];
 
-static void trace_get_value_string(
+inline void trace_get_value_string(     // Only used at one place
     int t, char *buf, int len,
     int i, float coeff[POINTS_COUNT],
     int ri, int mtype,
@@ -912,7 +960,7 @@ static void trace_get_value_string(
 #endif
     v = value(coeff[i]);
     if (mtype & M_NOISE)
-      v = v - 10*log10(actual_rbw_x10*100.0);
+      v = v - 10*log10f(actual_rbw_x10*100.0);
     if (v == -INFINITY)
       plot_printf(buf, len, "-INF");
     else {
@@ -1510,6 +1558,11 @@ draw_cell(int m, int n)
   // Draw rectangular plot (40 system ticks for all screen calls)
   if (trace_type & RECTANGULAR_GRID_MASK) {
     for (x = 0; x < w; x++) {
+#ifdef __HAM_BAND__
+      if (ham_band(x+x0)) {
+        for (y = 0; y < h; y++) cell_buffer[y * CELLWIDTH + x] = config.ham_color;
+      }
+#endif
       if (rectangular_grid_x(x + x0)) {
         for (y = 0; y < h; y++) cell_buffer[y * CELLWIDTH + x] = c;
       }
@@ -2140,11 +2193,11 @@ draw_frequencies(void)
       plot_printf(buf2, sizeof(buf2), " TIME %.3Fs", (float)t/ONE_SECOND_TIME);
 
     } else if (FREQ_IS_STARTSTOP()) {
-      plot_printf(buf1, sizeof(buf1), " START %qHz", get_sweep_frequency(ST_START));
-      plot_printf(buf2, sizeof(buf2), " STOP %qHz", get_sweep_frequency(ST_STOP));
+      plot_printf(buf1, sizeof(buf1), " START %.3qHz    %5.1qHz/", get_sweep_frequency(ST_START), grid_span);
+      plot_printf(buf2, sizeof(buf2), " STOP %.3qHz", get_sweep_frequency(ST_STOP));
     } else if (FREQ_IS_CENTERSPAN()) {
-      plot_printf(buf1, sizeof(buf1), " CENTER %qHz", get_sweep_frequency(ST_CENTER));
-      plot_printf(buf2, sizeof(buf2), " SPAN %qHz", get_sweep_frequency(ST_SPAN));
+      plot_printf(buf1, sizeof(buf1), " CENTER %.3qHz    %5.1qHz/", get_sweep_frequency(ST_CENTER), grid_span);
+      plot_printf(buf2, sizeof(buf2), " SPAN %.3qHz", get_sweep_frequency(ST_SPAN));
     }
 #ifdef __VNA__
   } else {
@@ -2159,12 +2212,12 @@ draw_frequencies(void)
     buf1[0] = S_SARROW[0];
   if (uistat.lever_mode == LM_SPAN)
     buf2[0] = S_SARROW[0];
-  int p2 = FREQUENCIES_XPOS2;
-  if (FREQ_IS_CW()) {
-    p2 = LCD_WIDTH - FONT_MAX_WIDTH*strlen(buf2);
-  }
-  ili9341_drawstring(buf1, FREQUENCIES_XPOS1, FREQUENCIES_YPOS);
+//  int p2 = FREQUENCIES_XPOS2;
+//  if (FREQ_IS_CW()) {
+    int p2 = LCD_WIDTH - FONT_MAX_WIDTH*strlen(buf2);
+//  }
   ili9341_drawstring(buf2, p2, FREQUENCIES_YPOS);
+  ili9341_drawstring(buf1, FREQUENCIES_XPOS1, FREQUENCIES_YPOS);
 }
 #ifdef __VNA__
 void

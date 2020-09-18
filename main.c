@@ -182,6 +182,8 @@ static THD_FUNCTION(Thread1, arg)
         int i = marker_search();
         if (i != -1 && active_marker != -1) {
           markers[active_marker].index = i;
+          markers[active_marker].frequency = frequencies[i];
+
           redraw_request |= REDRAW_MARKER;
         }
       }
@@ -471,7 +473,7 @@ calculate:
   return value;
 }
 
-double
+float
 my_atof(const char *p)
 {
   int neg = FALSE;
@@ -479,11 +481,11 @@ my_atof(const char *p)
     neg = TRUE;
   if (*p == '-' || *p == '+')
     p++;
-  double x = my_atoi(p);
+  float x = my_atoi(p);
   while (_isdigit((int)*p))
     p++;
   if (*p == '.') {
-    double d = 1.0f;
+    float d = 1.0f;
     p++;
     while (_isdigit((int)*p)) {
       d /= 10;
@@ -846,6 +848,7 @@ config_t config = {
   .magic =             CONFIG_MAGIC,
   .dac_value =         1922,
   .grid_color =        DEFAULT_GRID_COLOR,
+  .ham_color =         DEFAULT_HAM_COLOR,
   .menu_normal_color = DEFAULT_MENU_COLOR,
   .menu_active_color = DEFAULT_MENU_ACTIVE_COLOR,
   .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR},
@@ -1023,9 +1026,9 @@ VNA_SHELL_FUNCTION(cmd_scan)
     if (mask) {
       for (i = 0; i < points; i++) {
         if (mask & 1) shell_printf("%u ", frequencies[i]);
-        if (mask & 2) shell_printf("%f ", value(measured[0][i]));
-        if (mask & 4) shell_printf("%f ", value(measured[1][i]));
-        if (mask & 8) shell_printf("%f ", value(measured[2][i]));
+        if (mask & 2) shell_printf("%f %f ", value(measured[2][i]), 0.0);
+        if (mask & 4) shell_printf("%f %f ", value(measured[1][i]), 0.0);
+        if (mask & 8) shell_printf("%f %f ", value(measured[0][i]), 0.0);
         shell_printf("\r\n");
       }
     }
@@ -1053,6 +1056,7 @@ update_marker_index(void)
       for (i = 0; i < sweep_points-1; i++) {
         if (frequencies[i] <= f && f < frequencies[i+1]) {
           markers[m].index = f < (frequencies[i] / 2 + frequencies[i + 1] / 2) ? i : i + 1;
+          markers[m].frequency = frequencies[markers[m].index ];
           break;
         }
       }      
@@ -1886,16 +1890,23 @@ VNA_SHELL_FUNCTION(cmd_marker)
   if (t < 0 || t >= MARKERS_MAX)
     goto usage;
   if (argc == 1) {
+  display_marker:
     shell_printf("%d %d %d %.2f\r\n", t+1, markers[t].index, markers[t].frequency, value(actual_t[markers[t].index]));
     active_marker = t;
     // select active marker
     markers[t].enabled = TRUE;
     return;
   }
-  static const char cmd_marker_list[] = "on|off";
+  static const char cmd_marker_list[] = "on|off|peak";
   switch (get_str_index(argv[1], cmd_marker_list)) {
     case 0: markers[t].enabled = TRUE; active_marker = t; return;
     case 1: markers[t].enabled =FALSE; if (active_marker == t) active_marker = -1; return;
+    case 2: markers[t].enabled = TRUE; active_marker = t;
+      int i = marker_search_max();
+      if (i == -1) i = 0;
+      markers[active_marker].index = i;
+      markers[active_marker].frequency = frequencies[i];
+      goto display_marker;
     default:
       // select active marker and move to index
       markers[t].enabled = TRUE;
@@ -2305,6 +2316,7 @@ static const VNAShellCommand commands[] =
     {"touchtest"   , cmd_touchtest   , CMD_WAIT_MUTEX},
     {"pause"       , cmd_pause       , 0},
     {"resume"      , cmd_resume      , 0},
+    {"caloutput"   , cmd_caloutput   , 0},
 #ifdef __VNA__
     {"cal"         , cmd_cal         , CMD_WAIT_MUTEX},
 #endif
@@ -2752,7 +2764,7 @@ goto again;
 //    menu_mode_cb(setting.mode,0);
 //  }
   redraw_frame();
-#if 0
+#if 1
   set_mode(M_HIGH);
   set_sweep_frequency(ST_STOP, (uint32_t) 30000000);
   sweep(false);
@@ -2761,8 +2773,11 @@ goto again;
   set_mode(M_LOW);
   set_sweep_frequency(ST_STOP, (uint32_t) 4000000);
   sweep(false);
-  set_sweep_frequency(ST_STOP, (uint32_t) 350000000);
 #endif
+
+  if (caldata_recall(0) == -1) {
+    load_default_properties();
+  }
 
   set_refer_output(-1);
 //  ui_mode_menu();       // Show menu when autostarting mode
