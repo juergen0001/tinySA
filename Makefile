@@ -71,7 +71,9 @@ endif
 # or     ...
 
 ifeq ($(VERSION),)
-  VERSION="$(PROJECT)_$(shell git describe --tags --long)"
+  #VERSION="$(PROJECT)_$(shell git describe --tags --long)"
+  #wtf - why is v1.2 younger than v1.3, so that git describe doesn't deliver v1.3-xxx-gxxx???
+  VERSION="$(PROJECT)_$(shell git describe --tags --long | sed -e 's/v1\.2/v1\.3/g')"
 endif
 
 ##############################################################################
